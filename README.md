@@ -15,22 +15,33 @@ Great. By all means, keep using it. fooplot may still
 ## But Why plot this much data?
 Because the eye is extremely good at catching patterns. 
 
-Proper statistical methods will correlate a fly's heartbeat out of the roar of an exploding jet engine. Assuming I can observe long enough, the fly doesn't get nervous or suffer from cardiac arrythmia etc. Now before all that, we need to spot the fly. Obviously. Enter fooplot. 
+Proper statistical methods will correlate a fly's heartbeat out of the roar of an exploding jet engine. Assuming I can observe long enough, the fly doesn't get nervous or suffer from cardiac arrythmia etc. 
+
+But first, we need to spot the fly. Obviously.
+
+Enter fooplot. 
 
 ## Example screenshot
 <img src="www/screenshot1.png">
 
 ## Controls
 Left mouse button: pan
+
 Right mouse botton: Zoom area
 
+
 Mouse wheel: Zoom (out/in)
+
 CTRL-mouse wheel: Zoom (y axis only)
+
 SHIFT-mouse wheel: Zoom (x axis only)
 
 "a": Autoscale
+
 CTRL-a: Autoscale (Y axis only)
+
 SHIFT-A: Autoscale (X axis only)
+
 Hint (typical use case): Use area zoom for the intended range on one axis, next autoscale the other axis to again see the full range
 
 ## Internals
