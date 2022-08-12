@@ -1,9 +1,6 @@
 # fooplot
 Heavy-duty 2d plotting tool. Does very little but stupidly fast. E.g. browse 4M points @ 60 FPS
 
-# Status
-Functional and sufficiently bug-free for "real" work but documentation is incomplete.
-
 ## Why?
 Because existing plot tools don't perform with reasonably large amounts of data (7+ digit point count with O{N} perspective up to RAM limits)
 
