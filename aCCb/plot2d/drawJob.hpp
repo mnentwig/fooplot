@@ -1,5 +1,6 @@
 #pragma once
 #include <FL/Fl_Image.H>
+#include <FL/fl_draw.H>
 
 #include <cassert>
 #include <cmath>  // ceil
@@ -68,6 +69,37 @@ class drawJob {
 
    public:
     drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const vector<string>* pAnnot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) : marker(marker), pDataX(pDataX), pDataY(pDataY), pAnnot(pAnnot), vertLineX(vertLineX), horLineY(horLineY) {}
+
+    // draws only horizontal and vertical lines to screen without use of a stencil
+    void drawLinesDirectly(const proj<double> pScreen) {
+        fl_color(marker->rgba & 0xFF, (marker->rgba >> 8) & 0xFF, (marker->rgba >> 16) & 0xFF);
+
+        // === vertical lines ===
+        for (float x : vertLineX) {
+            int pixX = pScreen.projX(x);
+            for (int dx = -marker->dxMinus; dx <= marker->dxPlus; ++dx) {
+                fl_begin_line();
+                fl_vertex(pixX + dx, pScreen.getScreenY0());
+                fl_vertex(pixX + dx, pScreen.getScreenY1());
+                fl_end_line();
+            }
+        }
+
+        // === horizontal lines ===
+        for (float y : horLineY) {
+            int pixY = pScreen.projY(y);
+            for (int dy = -marker->dyMinus; dy <= marker->dyPlus; ++dy) {
+                fl_begin_line();
+                fl_vertex(pScreen.getScreenX0(), pixY + dy);
+                fl_vertex(pScreen.getScreenX1(), pixY + dy);
+                fl_end_line();
+            }
+        }
+    }
+
+    bool hasPoints() {
+        return pDataY != NULL;
+    }
 
     void drawToStencil(const proj<float> p, vector<stencil_t>& stencil) {
         // === vertical lines ===
@@ -303,18 +335,24 @@ class allDrawJobs_cl {
         const marker_cl* currentMarker = NULL;
         for (auto it = drawJobs.begin(); it != drawJobs.end(); ++it) {
             drawJob& j = *it;
-            bool stencilHoldsIncompatibleData = (currentMarker != NULL) && (currentMarker != j.marker);
-            if (stencilHoldsIncompatibleData) {
-                // Draw stencil...
-                vector<stencil_t> sConv = drawJob::convolveStencil(stencil, screenWidth, screenHeight, currentMarker);
-                drawJob::drawStencil2rgba(sConv, screenWidth, screenHeight, currentMarker, /*out*/ rgba);
-                drawJob::drawRgba2screen(rgba, screenX, screenY, screenWidth, screenHeight);
-                // ... and clear
-                std::fill(stencil.begin(), stencil.end(), 0);
-            }  // if incompatible with stencil contents
+            if (!j.hasPoints()) {
+                // draw lines directly to screen - use of a stencil is inefficient (unless we need it anyway for data)
+                // matters when lines of different colors are used in many plots that show up at the same time
+                j.drawLinesDirectly(p);
+            } else {
+                bool stencilHoldsIncompatibleData = (currentMarker != NULL) && (currentMarker != j.marker);
+                if (stencilHoldsIncompatibleData) {
+                    // Draw stencil...
+                    vector<stencil_t> sConv = drawJob::convolveStencil(stencil, screenWidth, screenHeight, currentMarker);
+                    drawJob::drawStencil2rgba(sConv, screenWidth, screenHeight, currentMarker, /*out*/ rgba);
+                    drawJob::drawRgba2screen(rgba, screenX, screenY, screenWidth, screenHeight);
+                    // ... and clear
+                    std::fill(stencil.begin(), stencil.end(), 0);
+                }  // if incompatible with stencil contents
 
-            j.drawToStencil(projStencil, /*out*/ stencil);
-            currentMarker = j.marker;
+                j.drawToStencil(projStencil, /*out*/ stencil);
+                currentMarker = j.marker;
+            }
         }
         // render final stencil
         if (currentMarker != NULL) {

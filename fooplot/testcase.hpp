@@ -81,6 +81,7 @@ string testcase_createDatafile0() {
 vector<string> testcase0(int tcNum) {
     vector<string> r;
     string t;
+
     r.push_back("-trace");
     r.push_back("-dataY");
     switch (tcNum) {
@@ -116,6 +117,27 @@ vector<string> testcase0(int tcNum) {
             r.push_back(testcase_createDatafile0<double>());
             t = "double";
             break;
+        case 8:
+            // lines without data (bypasses stencil, plots directly)
+            r.clear();
+            r.push_back("-trace");
+            for (double y = 1; y <= 1024; y *= 2) {
+                r.push_back("-horLineY");
+                r.push_back(std::to_string(y));
+            }
+            r.push_back("-marker");
+            r.push_back("y.2");
+
+            r.push_back("-trace");
+            for (double x = 1; x <= 1024; x *= 2) {
+                r.push_back("-vertLineX");
+                r.push_back(std::to_string(x*0.001));
+            }
+            r.push_back("-marker");
+            r.push_back("w.3");
+            return r;
+        default:
+            throw runtime_error("invalid testcase number: " + std::to_string(tcNum));
     }
     r.push_back("-marker");
     r.push_back("g.2");
@@ -131,11 +153,7 @@ vector<string> testcase0(int tcNum) {
 fooplotCmdLineArgRoot testcase(int tcNum) {
     std::cout << "testcase " << tcNum << std::endl;
     vector<string> args;
-    if (tcNum <= 7) {
-        args = testcase0(tcNum);
-    } else {
-        throw runtime_error("invalid testcase number");
-    }
+    args = testcase0(tcNum);
 
     fooplotCmdLineArgRoot l;
     for (const string& a : args) {
