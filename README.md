@@ -44,6 +44,11 @@ SHIFT-A: Autoscale (X axis only)
 
 Hint (typical use case): Use area zoom for the intended range on one axis, next autoscale the other axis to again see the full range
 
+"m": Toggle cursor position, location of closest point and (optional) annotation text of closest point. 
+If enabled, the point closest to the mouse will be highlighted with a red/blue cross.
+
+"ESC": Shut down program
+
 ## Command-line interface
 ### Overview
 A plot can contain any number of "traces" that are plotted in given order (last one on top, hides "traces" plotted earlier) 
@@ -101,6 +106,9 @@ Adds a vertical line at the given X position. Any number of lines may be added b
 ### -trace ... -horLineY (number) optional, repeatable
 Adds a horizontal line at the given Y position. Any number of lines may be added by repeating -horLineX (number)
 
+### -trace ... -annot (filename) optional
+Each row of the given ASCII file corresponds to one data point of the trace and will be shown in the marker display (enable with 'm' key)
+
 ### -title (string) optional
 Sets the title of the plot. It appears both in the window title and the plot. The plot area shrinks accordingly. Use quotation marks to include whitespace, depending on your shell environment.
 
@@ -133,6 +141,9 @@ E.g. use one common file for a large number of plots. Or use the datafile so the
 Example: "touch myPersistfile.txt; fooplot.exe -persist myPersistfile.txt ..."
 
 Every time, the above command line is invoked, the previous window will close.
+
+### -fontsize (number) optional
+Scales all text (title, axis labels, axis tics)
 
 ## Internals
 * Markers larger than a single pixel are drawn by convolution (fixed-time algorithm in data size)
