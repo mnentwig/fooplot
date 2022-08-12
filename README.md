@@ -98,7 +98,7 @@ Marker spec examples:
 Adds a vertical line at the given X position. Any number of lines may be added by repeating -vertLineX (number)
 
 ### -trace ... -horLineY (number) optional, repeatable
-Adds a horizontal line at the given Y position. Any number of lines may be added by repeating -horLineX (number)
+Adds a horizontal line at the given Y position. Any number of lines may be added by repeating -horLineY (number)
 
 ### -trace ... -annot (filename) optional
 Each row of the given ASCII file corresponds to one data point of the trace and will be shown in the marker display (enable with 'm' key)
