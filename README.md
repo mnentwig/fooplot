@@ -90,10 +90,10 @@ Valid marker shape/size combinations are:
 * x1 (3x3 diagonal cross)
 * x2 (5x5 diagonal cross)
 
-Examples: 
-* -marker g+1 single green dots (hint: don't use in telcos where pixel accuracy is not guaranteed)
-* marker y+2 easily distinguishable yellow dot
-* marker w+3 hard-to-miss white circle
+Marker spec examples: 
+* -marker g+1   single green dots (hint: don't use in telcos where pixel accuracy is not guaranteed)
+* -marker y+2   easily distinguishable yellow dot
+* -marker w+3   hard-to-miss white circle
 
 ### -trace ... -vertLineX (number) optional, repeatable
 Adds a vertical line at the given X position. Any number of lines may be added by repeating -vertLineX (number)
