@@ -8,7 +8,9 @@ Functional and sufficiently bug-free for "real" work but documentation is incomp
 Because existing plot tools don't perform with reasonably large amounts of data (7+ digit point count with O{N} perspective up to RAM limits)
 
 ## But gnuplot already does the job
-Great. By all means, keep using it. fooplot may still 
+Great. By all means, keep using it. So do I.
+
+fooplot may still 
 * "nudge the envelope" wrt dataset size. Realized your "envelope" needs a "forklift"? We're here to help.
 * offer a license-unencumbered option (feel free to contact me if even "MIT" causes issues)
 
