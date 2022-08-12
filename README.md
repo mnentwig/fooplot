@@ -17,9 +17,7 @@ fooplot may still
 ## But Why plot this much data?
 Because the eye is extremely good at catching patterns. 
 
-Proper statistical methods will correlate a fly's heartbeat out of the roar of an exploding jet engine (at least assuming the fly doesn't suffer from cardiac arrythmia and keeps generally calm). 
-
-But need to spot the flies in your data soup? Enter fooplot. 
+It's no match for proper statistical methods that will correlate a fly's heartbeat out of the roar of an exploding jet engine (if the fly keeps generally calm and doesn't suffer from cardiac arrythmia). But, suspecting flies in your data soup? Enter fooplot. 
 
 ## Example screenshot
 <img src="www/screenshot1.png">
@@ -28,7 +26,6 @@ But need to spot the flies in your data soup? Enter fooplot.
 Left mouse button: pan
 
 Right mouse botton: Zoom area
-
 
 Mouse wheel: Zoom (out/in)
 
