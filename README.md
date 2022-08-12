@@ -125,12 +125,12 @@ Adjusts the initial zoom settings to start at the given low end of the Y axis
 Adjusts the initial zoom settings to end at the given high end of the Y axis 
 
 ### -persist (filename) optional
-Loads window position and size at startup, saves on change. Use to close and re-open a plot without changing place and size.
+Loads window position and size at startup, saves on change into given file. Use to close and re-open a plot without changing place and size.
 
 ### -sync (filename) optional
 The given arbitrary file is periodically polled for its modification date. On change, the plot closes. Use to automatically close one or more plots.
 
-E.g. use one common file for a large number of plots. Or use the datafile so the plot closes once data gets rewritten. 
+E.g. use one common file for a large number of plots. Or use the datafile so the plot automatically closes when data gets rewritten. 
 
 Example: "touch myPersistfile.txt; fooplot.exe -persist myPersistfile.txt ..."
 
@@ -141,7 +141,5 @@ Scales all text (title, axis labels, axis tics)
 
 ## Internals
 * Markers larger than a single pixel are drawn by convolution (fixed-time algorithm in data size)
-* partly multi-threaded
-* using binary data does help quite a bit, too
-
-# To be continued
+* multi-threaded: Large data sets are split into chunks that are plotted in parallel, then combined by logical "or" 
+* using binary data for IO does help quite a bit with performance (ASCII is supported but 32-bit float is recommended)
