@@ -152,7 +152,7 @@ The makefile is for MinGW (Windows). Building on Linux platforms is straightforw
 ```
 to see typical switches.
 
-After compilation, only the fooplotv1.exe needs to be kept. Version numbers will increase for compatibility-breaking changes.
+After compilation, only "fooplotv1.exe" needs to be kept. Version numbers will increase for compatibility-breaking changes.
 
 ## Internals
 * Markers larger than a single pixel are drawn by convolution (fixed-time algorithm in data size)
