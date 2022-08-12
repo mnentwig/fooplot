@@ -139,6 +139,21 @@ Every time, the above command line is invoked, the previous window will close.
 ### -fontsize (number) optional
 Scales all text (title, axis labels, axis tics)
 
+## Building
+fooplot is written in C++ 17, designed for minimal library dependencies. It even brings its own vector font.
+
+It requires a compiled bare-bone fltk-1.3.8 source tree (./configure; make). No need to install, fltk is linked statically and not required for running the application.
+
+By default (see makefile), the fltk-1.3.8 folder is expected one level above the root-level "fooplot" folder.
+
+The makefile is for MinGW (Windows). Building on Linux platforms is straightforward, use e.g.
+```
+../fltk-1.3.8/fltk-config --cflags --ldstaticflags
+```
+to see typical switches.
+
+After compilation, only the fooplotv1.exe needs to be kept. Version numbers will increase for compatibility-breaking changes.
+
 ## Internals
 * Markers larger than a single pixel are drawn by convolution (fixed-time algorithm in data size)
 * multi-threaded: Large data sets are split into chunks that are plotted in parallel, then combined by logical "or" 
