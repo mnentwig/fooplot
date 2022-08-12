@@ -126,7 +126,13 @@ Adjusts the initial zoom settings to end at the given high end of the Y axis
 Loads window position and size at startup, saves on change. Use to close and re-open a plot without changing place and size.
 
 ### -sync (filename) optional
-The given arbitrary file is periodically polled for its modification date. If it changes, the plot closes. Use to automatically close one or more plots ("touch myPersistfile.txt; fooplot.exe persist myPersistfile.txt ..."
+The given arbitrary file is periodically polled for its modification date. On change, the plot closes. Use to automatically close one or more plots.
+
+E.g. use one common file for a large number of plots. Or use the datafile so the plot closes once data gets rewritten. 
+
+Example: "touch myPersistfile.txt; fooplot.exe -persist myPersistfile.txt ..."
+
+Every time, the above command line is invoked, the previous window will close.
 
 ## Internals
 * Markers larger than a single pixel are drawn by convolution (fixed-time algorithm in data size)
