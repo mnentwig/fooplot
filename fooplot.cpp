@@ -1,3 +1,7 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+
 #include <filesystem>
 #include <iostream>
 #include <regex>
@@ -18,10 +22,6 @@
 #include "fooplot/testcase.hpp"
 #include "fooplot/traceMan.hpp"
 using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::map, std::pair, std::cerr;
-
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #if 0
 class myMenu : public aCCbWidget {
@@ -58,26 +58,33 @@ class myMenu : public aCCbWidget {
     Fl_Float_Input *fi;
 };
 #endif
-class myTestWin {
-   public:
-    myTestWin(fooplotCmdLineArgRoot &l, allDrawJobs_cl &adr) : syncfile(l.syncfile), persistfile(l.persistfile) {
+class myTestWin
+{
+public:
+    myTestWin(fooplotCmdLineArgRoot &l, allDrawJobs_cl &adr) : syncfile(l.syncfile), persistfile(l.persistfile)
+    {
         // === main window ===
         int areaW, areaH;
-        if ((l.windowX > 0) && (l.windowY > 0) && (l.windowW > 0) && (l.windowH > 0)) {
+        if ((l.windowX > 0) && (l.windowY > 0) && (l.windowW > 0) && (l.windowH > 0))
+        {
             window = new Fl_Double_Window(l.windowX, l.windowY, l.windowW, l.windowH);
             areaW = l.windowW;
             areaH = l.windowH;
-        } else if ((l.windowW > 0) && (l.windowH > 0)) {
+        }
+        else if ((l.windowW > 0) && (l.windowH > 0))
+        {
             window = new Fl_Double_Window(l.windowX, l.windowY);
             areaW = l.windowW;
             areaH = l.windowH;
-        } else {
+        }
+        else
+        {
             int dim = std::min(Fl::w(), Fl::h());
             window = new Fl_Double_Window(dim / 2, dim / 2);
             areaW = dim / 2;
             areaH = dim / 2;
         }
-        window->size(areaW, areaH);  // constructor arg is unreliable
+        window->size(areaW, areaH); // constructor arg is unreliable
         window->callback(cb_closeWrapper, (void *)this);
         window->color(FL_BLACK);
 
@@ -103,7 +110,8 @@ class myTestWin {
 
         bool needAutoscaleX0 = std::isnan(l.xLimLow);
         bool needAutoscaleX1 = std::isnan(l.xLimHigh);
-        if (needAutoscaleX0 | needAutoscaleX1) {
+        if (needAutoscaleX0 | needAutoscaleX1)
+        {
             bool success = tb->autoscaleX(needAutoscaleX0, needAutoscaleX1);
             if (!success)
                 tb->autoscaleX(true, true);
@@ -111,7 +119,8 @@ class myTestWin {
 
         bool needAutoscaleY0 = std::isnan(l.yLimLow);
         bool needAutoscaleY1 = std::isnan(l.yLimHigh);
-        if (needAutoscaleY0 | needAutoscaleY1) {
+        if (needAutoscaleY0 | needAutoscaleY1)
+        {
             bool success = tb->autoscaleY(needAutoscaleY0, needAutoscaleY1);
             if (!success)
                 tb->autoscaleY(true, true);
@@ -125,40 +134,47 @@ class myTestWin {
         Fl::add_timeout(0.1, cb_timerWrapper, (void *)this);
     }
 
-    void show() {
+    void show()
+    {
         window->show();
     }
 
-    void cb_close() {
+    void cb_close()
+    {
         window->hide();
     }
 
-    void shutdown() {
+    void shutdown()
+    {
         // need to stop background processes, before removal of the window triggers destructors
         Fl::remove_timeout(cb_timerWrapper);
         tb->shutdown();
     }
 
-    static void cb_closeWrapper(Fl_Widget *w, void *userdata) {
+    static void cb_closeWrapper(Fl_Widget *w, void *userdata)
+    {
         myTestWin *this_ = (myTestWin *)userdata;
         this_->cb_close();
     }
 
-    void cb_timer() {
+    void cb_timer()
+    {
         tb->cb_timer();
         if (syncfile.isModified())
-            cb_close();  // all windows are hidden => Fl::run() returns
+            cb_close(); // all windows are hidden => Fl::run() returns
         else
             Fl::repeat_timeout(0.5, cb_timerWrapper, (void *)this);
 
-        if (persistfile != "") {
+        if (persistfile != "")
+        {
             std::stringstream ss;
             ss << "-windowX " << window->x()
                << " -windowY " << window->y()
                << " -windowW " << std::max(window->w(), 300)
                << " -windowH " << std::max(window->h(), 300);
             const string newContents = ss.str();
-            if (newContents != persistFileContents) {
+            if (newContents != persistFileContents)
+            {
                 persistFileContents = newContents;
                 std::ofstream s(persistfile);
                 s << persistFileContents;
@@ -166,17 +182,19 @@ class myTestWin {
         }
     }
 
-    static void cb_timerWrapper(void *userdata) {
+    static void cb_timerWrapper(void *userdata)
+    {
         assert(userdata);
         ((myTestWin *)userdata)->cb_timer();
     }
 
-    ~myTestWin() {
-        delete this->window;  // deletes children recursively
+    ~myTestWin()
+    {
+        delete this->window; // deletes children recursively
     }
     aCCb::plot2d *tb;
 
-   protected:
+protected:
     aCCbWidget *menu;
     Fl_Double_Window *window;
     syncFile_t syncfile;
@@ -185,10 +203,11 @@ class myTestWin {
 };
 
 //* returns file contents split by whitespace */
-vector<string> readPersistFileTokens(const string &filename) {
+vector<string> readPersistFileTokens(const string &filename)
+{
     std::ifstream is(filename, std::ios::binary);
     if (!is)
-        return vector<string>();  // persistfile does not exist the first time, will be created
+        return vector<string>(); // persistfile does not exist the first time, will be created
 
     // === file to string ===
     std::ostringstream all;
@@ -196,11 +215,12 @@ vector<string> readPersistFileTokens(const string &filename) {
     string content = all.str();
 
     // === split at whitespace ===
-    std::regex r("\\s+");  // cannot use a temporary expression (one-liner)
+    std::regex r("\\s+"); // cannot use a temporary expression (one-liner)
     return {std::sregex_token_iterator(content.begin(), content.end(), r, -1), /*equiv. to end()*/ std::sregex_token_iterator()};
 }
 
-void usage() {
+void usage()
+{
     cerr << "usage:" << endl;
     cerr << "-trace" << endl;
     cerr << "   -dataX (filename)" << endl;
@@ -232,7 +252,8 @@ class ww : public Fl_Double_Window {
 #endif
 
 static myTestWin *windowForSigIntHandler;
-int main2(int argc, const char **argv) {
+int main2(int argc, const char **argv)
+{
 #if 0
     ww *window = new ww(111, 112);
     window->size(113, 114);
@@ -270,7 +291,8 @@ int main2(int argc, const char **argv) {
         cout << endl;
     }
 #else
-    if (argc < 2) {
+    if (argc < 2)
+    {
         usage();
         exit(0);
     }
@@ -282,22 +304,25 @@ int main2(int argc, const char **argv) {
     fooplotCmdLineArgRoot l;
 
     // === parse command line args ===
-    for (int ixArg = 1; ixArg < argc; ++ixArg) {
+    for (int ixArg = 1; ixArg < argc; ++ixArg)
+    {
         const string a = argv[ixArg];
         // cout << "parsing " << a << endl;
         if (!l.acceptArg(a))
             throw aCCb::argObjException("unexpected argument '" + a + "'");
     }
 
-    if (l.showUsage) {
-        usage();  // note: -usage, even at the end, is handled before any args processing that could throw an exception
+    if (l.showUsage)
+    {
+        usage(); // note: -usage, even at the end, is handled before any args processing that could throw an exception
         exit(/*EXIT_SUCCESS*/ 0);
     }
 
     // === read and apply "persistent" settings e.g. window position ===
     // those are applied after all command line args have been handled
     // (use model: delete persist file to reset)
-    if (l.persistfile != "") {
+    if (l.persistfile != "")
+    {
         vector<string> tokens = readPersistFileTokens(l.persistfile);
         for (string v : tokens)
             if (!l.acceptArg(v))
@@ -320,7 +345,8 @@ int main2(int argc, const char **argv) {
 
     allDrawJobs_cl allDrawJobs;
 
-    for (auto t : l.traces) {
+    for (auto t : l.traces)
+    {
         const marker_cl *marker = markerMan.getMarker(t.marker);
         if (!marker)
             throw aCCb::argObjException("invalid marker description '" + t.marker + "'. Valid example: g.1");
@@ -328,7 +354,7 @@ int main2(int argc, const char **argv) {
         traceDataMan.loadData(t.dataY);
         traceDataMan.loadAnnotations(t.annotate);
         drawJob j(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), traceDataMan.getAnnotations(t.annotate), marker, t.vertLineX, t.horLineY);
-        allDrawJobs.addTrace(j);
+        allDrawJobs.addDrawJob(j);
     }
 
     // === start up window ===
@@ -347,24 +373,31 @@ int main2(int argc, const char **argv) {
 }
 
 // Ctrl-C callback
-void sigIntHandler(int /*signal*/) {
+void sigIntHandler(int /*signal*/)
+{
     std::cout << "sig INT detected, shutting down" << endl;
     if (windowForSigIntHandler)
-        windowForSigIntHandler->cb_close();  // same as regular close
+        windowForSigIntHandler->cb_close(); // same as regular close
     exit(1);
 }
 
-int main(int argc, const char **argv) {
+int main(int argc, const char **argv)
+{
     windowForSigIntHandler = NULL;
     signal(SIGINT, sigIntHandler);
 
-    try {
+    try
+    {
         main2(argc, argv);
-    } catch (aCCb::argObjException &e) {
+    }
+    catch (aCCb::argObjException &e)
+    {
         cerr << "error: " << e.what() << "\n";
         cerr << "use -help for usage information" << endl;
         exit(/*EXIT_FAILURE*/ -1);
-    } catch (std::exception &e) {
+    }
+    catch (std::exception &e)
+    {
         cerr << "unhandled exception: " << e.what() << endl;
         exit(/*EXIT_FAILURE*/ -1);
     }

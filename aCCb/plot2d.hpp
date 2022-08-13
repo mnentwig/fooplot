@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "plot2d/allDrawJobs.hpp"
 #include "plot2d/annotator.hpp"
 #include "plot2d/axisTics.hpp"
 #include "plot2d/drawJob.hpp"
