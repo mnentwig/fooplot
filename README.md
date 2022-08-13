@@ -150,12 +150,12 @@ Scales all text (title, axis labels, axis tics)
 Use -testcase 9 command line argument to generate the "testdata" folder.
 
 For traces are plotted from the same x/y data, using the mask vector to show one quadrant each in a different color.
-
+```
 -trace -dataX testdata/x.float -dataY testdata/y.float -mask testdata/mask.uint16 0 -marker gx1 
 -trace -dataX testdata/x.float -dataY testdata/y.float -mask testdata/mask.uint16 1 -marker bx2 
 -trace -dataX testdata/x.float -dataY testdata/y.float -mask testdata/mask.uint16 2 -marker rx2 
 -trace -dataX testdata/x.float -dataY testdata/y.float -mask testdata/mask.uint16 3 -marker yx2
-
+```
 ## Building
 fooplot is written in C++ 17, designed for minimal library dependencies. It even brings its own vector font.
 
