@@ -11,19 +11,25 @@
 #include "marker.hpp"
 #include "proj.hpp"
 using std::vector, std::string;
+// type held by the stencil. A single bit would be sufficient but the required read/bit masking/write completely kills performance.
+// benchmarking shows "byte" is fastest. This seems plausible, given that a typical memory hardware architecture supports byte-level masked write via dedicated "enable" lines
 typedef uint8_t stencil_t;  // bool: 32 ms; uint8: 4.5 ms; uint16: 6 ms uint32_t: 9 ms uint64_t: 16 ms
+
+// one "trace" (set of things to be rendered using a common marker by convolution)
 class drawJob {
    protected:
-    // multithreaded job description.
-    // passed by value - don't put anything large inside
+    // multithreaded job description, for segmenting a trace with a large nr. of points into multiple "jobs" that are rendered to stencil in parallel
+    // note: passed by value - don't put anything large inside
     class job_t {
        public:
-        job_t(size_t ixStart, size_t ixEnd, const vector<float>* pDataX, const vector<float>* pDataY, const proj<float> p, vector<stencil_t>* pStencil)
+        job_t(size_t ixStart, size_t ixEnd, const vector<float>* pDataX, const vector<float>* pDataY, const proj<float> p, const vector<uint16_t>* pMask, uint16_t maskVal, vector<stencil_t>* pStencil)
             : ixStart(ixStart),
               ixEnd(ixEnd),
               pDataX(pDataX),
               pDataY(pDataY),
               p(p),
+              pMask(pMask),
+              maskVal(maskVal),
               pStencil(pStencil) {
             if ((pDataX != NULL) && (pDataY != NULL))
                 if (pDataX->size() != pDataY->size())
@@ -35,40 +41,41 @@ class drawJob {
         const vector<float>* pDataX;
         const vector<float>* pDataY;
         const proj<float> p;
+        const vector<uint16_t>* pMask;
+        uint16_t maskVal;
         vector<stencil_t>* pStencil;
     };
 
-    static void drawDotsXY(const job_t job) {
-        assert(job.pDataX->size() == job.pDataY->size());
+    template <bool hasX, bool hasMask>
+    static void drawDots(const job_t job) {
         const int width = job.p.getScreenWidth();
         const int height = job.p.getScreenHeight();
 
-        for (size_t ix = job.ixStart; ix < job.ixEnd; ++ix) {
-            float plotX = (*(job.pDataX))[ix];
-            float plotY = (*(job.pDataY))[ix];
-            int pixX = job.p.projX(plotX);
-            int pixY = job.p.projY(plotY);
-            if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                (*job.pStencil)[pixY * width + pixX] = 1;
-        }  // for ix
-    }
-
-    static void drawDotsY(const job_t job) {
-        const int width = job.p.getScreenWidth();
-        const int height = job.p.getScreenHeight();
+        float plotX;  // for !hasX, use +1.0f increments instead of repeated int-to-float conversion
+        if constexpr (!hasX)
+            plotX = job.ixStart + 1.0f;
 
         for (size_t ix = job.ixStart; ix < job.ixEnd; ++ix) {
-            float plotX = ix + 1;
-            float plotY = (*(job.pDataY))[ix];
-            int pixX = job.p.projX(plotX);
-            int pixY = job.p.projY(plotY);
-            if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                (*job.pStencil)[pixY * width + pixX] = 1;
+            if (!hasMask || (*(job.pMask))[ix] == job.maskVal) {
+                if constexpr (hasX)
+                    plotX = (*(job.pDataX))[ix];
+                int pixX = job.p.projX(plotX);
+                if ((pixX >= 0) && (pixX < width)) {
+                    float plotY = (*(job.pDataY))[ix];
+                    int pixY = job.p.projY(plotY);
+                    if ((pixY >= 0) && (pixY < height))
+                        (*job.pStencil)[pixY * width + pixX] = 1;
+                }  // if x in range
+            }      // if mask enables point
+
+            if constexpr (!hasX)
+                plotX += 1.0f;
         }  // for ix
     }
 
    public:
-    drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const vector<string>* pAnnot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) : marker(marker), pDataX(pDataX), pDataY(pDataY), pAnnot(pAnnot), vertLineX(vertLineX), horLineY(horLineY) {}
+    drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const vector<string>* pAnnot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY, const vector<uint16_t>* pMask, uint16_t maskVal)
+        : marker(marker), pDataX(pDataX), pDataY(pDataY), pAnnot(pAnnot), vertLineX(vertLineX), horLineY(horLineY), pMask(pMask), maskVal(maskVal) {}
 
     // draws only horizontal and vertical lines to screen without use of a stencil
     void drawLinesDirectly(const proj<double> pScreen) {
@@ -125,16 +132,23 @@ class drawJob {
             return;
         size_t nData = pDataY->size();
         const size_t chunk = 65536 * 16;
-        vector<job_t> jobs;
         vector<std::future<void>> futs;
         for (size_t chunkIxStart = 0; chunkIxStart < nData; chunkIxStart += chunk) {
             size_t chunkIxEnd = std::min(chunkIxStart + chunk, nData);
-            job_t job(chunkIxStart, chunkIxEnd, pDataX, pDataY, p, &stencil);
-            jobs.push_back(job);
-            if (pDataX)
-                futs.push_back(std::async(drawDotsXY, jobs.back()));
-            else
-                futs.push_back(std::async(drawDotsY, jobs.back()));
+            job_t job(chunkIxStart, chunkIxEnd, pDataX, pDataY, p, pMask, maskVal, &stencil);
+
+            // each of the following variants refers to a custom variant of the performance-critical "drawDots" function that has the conditions optimized out as constexpr
+            bool hasDataX = pDataX != NULL;
+            bool hasMask = pMask != NULL;
+
+            if (!hasDataX && !hasMask)
+                futs.push_back(std::async(drawDots</*hasDataX*/ false, /*hasMask*/ false>, /*pass by value*/ job));
+            else if (!hasDataX && hasMask)
+                futs.push_back(std::async(drawDots</*hasDataX*/ false, /*hasMask*/ true>, /*pass by value*/ job));
+            else if (hasDataX && !hasMask)
+                futs.push_back(std::async(drawDots</*hasDataX*/ true, /*hasMask*/ false>, /*pass by value*/ job));
+            else /*if (hasDataX && hasMask)*/
+                futs.push_back(std::async(drawDots</*hasDataX*/ true, /*hasMask*/ true>, /*pass by value*/ job));
         }
         for (std::future<void>& f : futs)
             f.get();
@@ -298,11 +312,20 @@ class drawJob {
     const marker_cl* marker;
 
    protected:
+    // X location of points (NULL: use 1, 2, ..., N)
     const vector<float>* pDataX;
+    // Y location of points (NULL: no data)
     const vector<float>* pDataY;
+    // Annotations, one per pDataY point (NULL: no annotations)
     const vector<string>* pAnnot;
+    // vertical lines
     vector<float> vertLineX;
+    // horizontal lines
     vector<float> horLineY;
+    // mask value for each pDataY point (NULL: no mask). If set, only points with mask==maskVal are plotted.
+    const vector<uint16_t>* pMask;
+    // mask value (if pMask is non-NULL). If the latter, only points with mask==maskVal are plotted.
+    uint16_t maskVal;
 
     // determines pixel distance squared between xData/yData (data coordinates) and xScreen/yScreen (screen coordinates)
     static int projectedDeltaSquare(const proj<float>& p, float xData, float yData, int xScreen, int yScreen) {

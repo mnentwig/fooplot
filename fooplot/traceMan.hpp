@@ -3,46 +3,104 @@
 #include <string>
 
 using std::string, std::vector;
+
+// loads data files, converts format and keeps them in memory, providing const pointers via filename.
 class traceDataMan_cl {
     // converts vector of arbitrary type to float by casting
     template <typename T>
-    static vector<float> floatify(const vector<T> data) {
+    static vector<float> floatify(const vector<T> &data) {
         vector<float> r(data.size());
         for (size_t ix = 0; ix < data.size(); ++ix)
             r[ix] = (float)data[ix];
         return r;
     }
 
+    // converts vector by casting elements individually
+    template <typename Tin, typename Tout>
+    static vector<Tout> castVector(const vector<Tin> &data) {
+        vector<Tout> r(data.size());
+        for (size_t ix = 0; ix < data.size(); ++ix)
+            r[ix] = (Tout)data[ix];
+        return r;
+    }
+
+    // converts vector to uint16_t by casting elements individually
+    template <typename Tin>
+    static vector<uint16_t> castVectorToUint16(const vector<Tin> &data) {
+        return castVector<Tin, uint16_t>(data);
+    }
+
    public:
     traceDataMan_cl() {}
-    void loadData(const string &filename) {
+
+    // loads data for retrieval by its filename as 32-bit float vector
+    void loadAsFloat(const string &filename) {
         if (filename == "")
             return;
-        if (dataByFilename.find(filename) != dataByFilename.end())
+        if (floatDataByFilename.find(filename) != floatDataByFilename.end())
             return;
+
+        // file extension identifies input data format
         string ext = std::filesystem::path(filename).extension().string();
+
         if (aCCb::caseInsensitiveStringCompare(".float", ext))
-            dataByFilename[filename] = file2vec<float>(filename);
+            floatDataByFilename[filename] = file2vec<float>(filename);
         else if (aCCb::caseInsensitiveStringCompare(".double", ext))
-            dataByFilename[filename] = floatify(file2vec<double>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<double>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".int8", ext))
-            dataByFilename[filename] = floatify(file2vec<int8_t>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<int8_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".uint8", ext))
-            dataByFilename[filename] = floatify(file2vec<uint8_t>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<uint8_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".int16", ext))
-            dataByFilename[filename] = floatify(file2vec<int16_t>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<int16_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".uint16", ext))
-            dataByFilename[filename] = floatify(file2vec<uint16_t>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<uint16_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".int32", ext))
-            dataByFilename[filename] = floatify(file2vec<int32_t>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<int32_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".uint32", ext))
-            dataByFilename[filename] = floatify(file2vec<uint32_t>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<uint32_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".int64", ext))
-            dataByFilename[filename] = floatify(file2vec<int64_t>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<int64_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".uint64", ext))
-            dataByFilename[filename] = floatify(file2vec<uint64_t>(filename));
+            floatDataByFilename[filename] = floatify(file2vec<uint64_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".txt", ext))
-            dataByFilename[filename] = loadFloatVecFromTxt(filename);
+            floatDataByFilename[filename] = loadFloatVecFromTxt(filename);
+        else
+            throw aCCb::argObjException("unsupported data file extension (" + filename + ")");
+    }
+
+    // loads data for retrieval by its filename as 16-bit unsigned integer vector
+    void loadAsUInt16(const string &filename) {
+        if (filename == "")
+            return;
+        if (uint16DataByFilename.find(filename) != uint16DataByFilename.end())
+            return;
+
+        // file extension identifies input data format
+        string ext = std::filesystem::path(filename).extension().string();
+
+        if (aCCb::caseInsensitiveStringCompare(".float", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<float>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".double", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<double>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".int8", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<int8_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".uint8", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<uint8_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".int16", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<int16_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".uint16", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<uint16_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".int32", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<int32_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".uint32", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<uint32_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".int64", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<int64_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".uint64", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(file2vec<uint64_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".txt", ext))
+            uint16DataByFilename[filename] = castVectorToUint16(loadFloatVecFromTxt(filename));
         else
             throw aCCb::argObjException("unsupported data file extension (" + filename + ")");
     }
@@ -69,17 +127,27 @@ class traceDataMan_cl {
         return &(it->second);
     }
 
-    const vector<float> *getData(const string &filename) {
+    const vector<float> *getFloatVec(const string &filename) {
         if (filename == "")
             return NULL;
-        auto it = dataByFilename.find(filename);
-        if (it == dataByFilename.end())
+        auto it = floatDataByFilename.find(filename);
+        if (it == floatDataByFilename.end())
+            throw runtime_error("datafile should have been loaded but does not exist");
+        return &(it->second);
+    }
+
+    const vector<uint16_t> *getUInt16Vec(const string &filename) {
+        if (filename == "")
+            return NULL;
+        auto it = uint16DataByFilename.find(filename);
+        if (it == uint16DataByFilename.end())
             throw runtime_error("datafile should have been loaded but does not exist");
         return &(it->second);
     }
 
    protected:
-    map<string, vector<float>> dataByFilename;
+    map<string, vector<float>> floatDataByFilename;
+    map<string, vector<uint16_t>> uint16DataByFilename;
     map<string, vector<string>> annotationsByFilename;
 
     //* Read binary data from file into vector */

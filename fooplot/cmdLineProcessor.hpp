@@ -43,7 +43,13 @@ class trace : public aCCb::argObj {
             vertLineX.push_back(v);
         } else if (state == "-annot")
             annotate = a;
-        else
+        else if (state == "-mask") {
+            maskFile = a;
+            state = "-mask (value)";
+            return true;
+        } else if (state == "-mask (value)") {
+            if (!aCCb::str2num(a, maskVal)) throw aoException(state + ": failed to parse number ('" + a + "')");
+        } else
             throw runtime_error("state implementation missing: " + state);
         state = "";
         return true;
@@ -54,6 +60,8 @@ class trace : public aCCb::argObj {
     string marker;
     vector<float> horLineY;
     vector<float> vertLineX;
+    string maskFile;
+    uint16_t maskVal;
     string annotate;
 
    protected:
@@ -113,7 +121,7 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
             if (!aCCb::str2num(a, windowW)) throw aoException(state + ": failed to parse number ('" + a + "')");
         } else if (state == "-windowH") {
             if (!aCCb::str2num(a, windowH)) throw aoException(state + ": failed to parse number ('" + a + "')");
-        } else if (state == "-fontsize") { 
+        } else if (state == "-fontsize") {
             if (!aCCb::str2num(a, fontsize)) throw aoException(state + ": failed to parse number ('" + a + "')");
         } else if (state == "-sync") {
             syncfile = a;
