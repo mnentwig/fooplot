@@ -4,7 +4,7 @@ Speed-optimized 2d plotting tool to browse large datasets interactively.
 ## Motivation
 Common plotting tools (e.g. Octave plots, plotly.js, gnuplot) don't perform well with a large number of points (>> 100k) or fail entirely.
 
-fooplot is build from ground up to perform reasonably well up to RAM limits.
+fooplot is build from ground up for speed, up to RAM limits.
 
 ## Example screenshot
 <img src="www/screenshot1.png">
@@ -15,6 +15,7 @@ A typical use case is to visually separate data by some criteria (e.g. plot in d
 With large data sets, it is impractical to rebuild the input data every time, possibly for a large number of plots. 
 
 Instead, an additional "mask" vector can be given to categorize each point. If so, a "trace" plots only points whose "mask" entry equals one specific value. For example, a first trace could be used to plot regular data points with mask==0 in green, and highlighted points with mask==1 in red. 
+Plotting in this order guarantees, that the important "red" points are always drawn on top of regular "green" points and remain visible even in dense data.
 
 The following example (use "-testcase 9" argument to create the data files) plots sine-/ cosine data on x and y. 
 The "mask" vector identifies the quadrant with values 0..3. Four traces are used to plot quadrants using different colors.
