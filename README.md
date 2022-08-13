@@ -1,23 +1,24 @@
 # fooplot
-Heavy-duty 2d plotting tool. Does very little but stupidly fast. E.g. browse 4M points @ 60 FPS
+Speed-optimized 2d plotting tool to browse large datasets interactively.
 
-## Why?
-Because existing plot tools don't perform with reasonably large amounts of data (7+ digit point count with O{N} perspective up to RAM limits)
+## Motivation
+Common plotting tools (e.g. Octave plots, plotly.js, gnuplot) don't perform well with a large number of points (>> 100k) or fail entirely.
 
-## But gnuplot already does the job
-Great. By all means, keep using it. So do I.
-
-fooplot may still 
-* "nudge the envelope" wrt dataset size. Realized your "envelope" needs a "forklift"? We're here to help.
-* offer a license-unencumbered option (feel free to contact me if even "MIT" causes issues)
-
-## But Why plot this much data?
-Because the eye is extremely good at catching patterns. 
-
-It's no match for proper statistical methods that will correlate a fly's heartbeat out of the roar of an exploding jet engine (if the fly keeps generally calm and doesn't suffer from cardiac arrythmia). But, suspecting flies in your data soup? Enter fooplot. 
+fooplot is build from ground up to perform reasonably well up to RAM limits.
 
 ## Example screenshot
 <img src="www/screenshot1.png">
+
+## Masking data (use model)
+A typical use case is to visually separate data by some criteria (e.g. plot in different colors) and look for patterns. 
+
+With large data sets, it is impractical to rebuild the input data every time, possibly for a large number of plots. 
+
+Instead, an additional "mask" vector can be given to categorize each point. If so, a "trace" plots only points whose "mask" entry equals one specific value. For example, a first trace could be used to plot regular data points with mask==0 in green, and highlighted points with mask==1 in red. 
+
+The following example (use "-testcase 9" argument to create the data files) plots sine-/ cosine data on x and y. 
+The "mask" vector identifies the quadrant with values 0..3. Four traces are used to plot quadrants using different colors.
+<img src="www/testcase9.png">
 
 ## Controls
 Left mouse button: pan
@@ -103,6 +104,11 @@ Adds a horizontal line at the given Y position. Any number of lines may be added
 ### -trace ... -annot (filename) optional
 Each row of the given ASCII file corresponds to one data point of the trace and will be shown in the marker display (enable with 'm' key)
 
+### -trace ... -mask (filename) value
+filename is loaded as mask vector with one entry per plot data point. Only points with marker==value will be plotted.
+
+Note: internally, mask data is converted to 16 bit width. Therefore, "value" must be in 0..65535 range.
+
 ### -title (string) optional
 Sets the title of the plot. It appears both in the window title and the plot. The plot area shrinks accordingly. Use quotation marks to include whitespace, depending on your shell environment.
 
@@ -138,6 +144,16 @@ Every time, the above command line is invoked, the previous window will close.
 
 ### -fontsize (number) optional
 Scales all text (title, axis labels, axis tics)
+
+## Complete example
+Use -testcase 9 command line argument to generate the "testdata" folder.
+
+For traces are plotted from the same x/y data, using the mask vector to show one quadrant each in a different color.
+
+-trace -dataX testdata/x.float -dataY testdata/y.float -mask testdata/mask.uint16 0 -marker gx1 
+-trace -dataX testdata/x.float -dataY testdata/y.float -mask testdata/mask.uint16 1 -marker bx2 
+-trace -dataX testdata/x.float -dataY testdata/y.float -mask testdata/mask.uint16 2 -marker rx2 
+-trace -dataX testdata/x.float -dataY testdata/y.float -mask testdata/mask.uint16 3 -marker yx2
 
 ## Building
 fooplot is written in C++ 17, designed for minimal library dependencies. It even brings its own vector font.

@@ -65,7 +65,7 @@ class trace : public aCCb::argObj {
     string annotate;
 
    protected:
-    const vector<string> stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX", "-annot"};
+    const vector<string> stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX", "-annot", "-mask"};
     const vector<string> switchArgs;
 };
 

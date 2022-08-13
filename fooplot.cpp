@@ -94,7 +94,6 @@ class myTestWin {
 
         tb->setTitle(l.title);
         tb->fontsize = l.fontsize;
-        cout << l.fontsize << endl;
         tb->axisLabelFontsize = l.fontsize;
         tb->titleFontsize = l.fontsize * 1.5;
         window->label(l.title.c_str());
@@ -226,7 +225,6 @@ class ww : public Fl_Double_Window {
     ww(int w, int h)  : Fl_Double_Window(w, h) {
     }
     void resize(int x, int y, int w, int h) {
-        cout << "resize:\t" << w << "\t" << h << endl;
         Fl_Double_Window::resize(x, y, w, h);
     }
 };

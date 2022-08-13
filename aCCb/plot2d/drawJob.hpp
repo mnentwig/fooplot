@@ -137,6 +137,13 @@ class drawJob {
             size_t chunkIxEnd = std::min(chunkIxStart + chunk, nData);
             job_t job(chunkIxStart, chunkIxEnd, pDataX, pDataY, p, pMask, maskVal, &stencil);
 
+            // === sanity check ===
+            if (pDataX && pDataY && (pDataX->size() != pDataY->size()))
+                throw std::runtime_error("dataX / dataY vectors differ in length");
+
+            if (pMask && pDataY && (pMask->size() != pDataY->size()))
+                throw std::runtime_error("dataY and mask differ in length");
+
             // each of the following variants refers to a custom variant of the performance-critical "drawDots" function that has the conditions optimized out as constexpr
             bool hasDataX = pDataX != NULL;
             bool hasMask = pMask != NULL;
@@ -158,12 +165,12 @@ class drawJob {
     convolveStencil(const vector<stencil_t>& stencil, int width, int height, const marker_cl* marker) {
         vector<stencil_t> r(stencil);  // center pixel
                                        //        return r;
-        int count = 0;
+        int markerSeqPos = 0;
         for (int dx = -marker->dxMinus; dx <= marker->dxPlus; ++dx) {
-            for (int dy = -marker->dxMinus; dy <= marker->dxPlus; ++dy) {
+            for (int dy = -marker->dyMinus; dy <= marker->dyPlus; ++dy, ++markerSeqPos) {
                 if ((dx == 0) && (dy == 0))
                     continue;  // center pixel is set by return value constructor
-                if (marker->seq[count++]) {
+                if (marker->seq[markerSeqPos]) {
                     int ixSrc = 0;
                     int ixDest = 0;
                     int absDx = std::abs(dx);

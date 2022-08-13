@@ -78,6 +78,41 @@ string testcase_createDatafile0() {
     }
 }
 
+vector<string> testcase9() {
+    vector<float> x;
+    vector<float> y;
+    vector<uint16_t> mask;
+    for (double phi = 0; phi < 2.0 * M_PI; phi += 1e-4) {
+        x.push_back(std::cos(phi));
+        y.push_back(std::sin(phi));
+        uint16_t maskVal = x.back() < 0 ? 0 : 1;
+        maskVal += y.back() < 0 ? 0 : 2;
+        mask.push_back(maskVal);
+    }
+    std::filesystem::create_directory("testdata");
+    aCCb::binaryIo::vec2file("testdata/x.float", x);
+    aCCb::binaryIo::vec2file("testdata/y.float", y);
+    aCCb::binaryIo::vec2file("testdata/mask.uint16", mask);
+
+    vector<string> r;
+    for (int maskVal = 0; maskVal < 4; ++maskVal) {
+        r.push_back("-trace");
+        r.push_back("-dataX");
+        r.push_back("testdata/x.float");
+        r.push_back("-dataY");
+        r.push_back("testdata/y.float");
+        r.push_back("-mask");
+        r.push_back("testdata/mask.uint16");
+        r.push_back(std::to_string(maskVal));
+        r.push_back("-marker");
+        r.push_back((maskVal == 0)   ? "gx1"
+                    : (maskVal == 1) ? "bx2"
+                    : (maskVal == 2) ? "rx2"
+                                     : "yx2");
+    }
+    return r;
+}
+
 vector<string> testcase0(int tcNum) {
     vector<string> r;
     string t;
@@ -131,11 +166,13 @@ vector<string> testcase0(int tcNum) {
             r.push_back("-trace");
             for (double x = 1; x <= 1024; x *= 2) {
                 r.push_back("-vertLineX");
-                r.push_back(std::to_string(x*0.001));
+                r.push_back(std::to_string(x * 0.001));
             }
             r.push_back("-marker");
             r.push_back("w.3");
             return r;
+        case 9:
+            return testcase9();
         default:
             throw runtime_error("invalid testcase number: " + std::to_string(tcNum));
     }
@@ -152,14 +189,16 @@ vector<string> testcase0(int tcNum) {
 
 fooplotCmdLineArgRoot testcase(int tcNum) {
     std::cout << "testcase " << tcNum << std::endl;
-    vector<string> args;
-    args = testcase0(tcNum);
+    vector<string> args = testcase0(tcNum);
 
     fooplotCmdLineArgRoot l;
+    std::cout << "arguments: " << std::endl;
     for (const string& a : args) {
-        std::cout << "parsing " << a << std::endl;
         if (!l.acceptArg(a))
             throw aCCb::argObjException("testcase: unexpected argument '" + a + "'");
+        std::cout << a << " ";
     }
+    std::cout << std::endl;
+
     return l;
 }
