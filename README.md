@@ -159,7 +159,9 @@ For traces are plotted from the same x/y data, using the mask vector to show one
 ## Building
 fooplot is written in C++ 17, designed for minimal library dependencies. It even brings its own vector font.
 
-It requires a compiled bare-bone fltk-1.3.8 source tree (./configure; make). No need to install, fltk is linked statically and not required for running the application.
+It requires a compiled barebone fltk-1.3.8 source tree (./configure; make). 
+
+FLTK does not need to be installed, neither for development or deployment (just copy the .exe file), as it is linked statically.
 
 By default (see makefile), the fltk-1.3.8 folder is expected one level above the root-level "fooplot" folder.
 
