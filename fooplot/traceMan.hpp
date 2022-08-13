@@ -2,9 +2,9 @@
 #include <filesystem>
 #include <string>
 
-#include "../aCCb/binIo.hpp"
-using std::string, std::vector, aCCb::binaryIo::file2vec;
+using std::string, std::vector;
 class traceDataMan_cl {
+    // converts vector of arbitrary type to float by casting
     template <typename T>
     static vector<float> floatify(const vector<T> data) {
         vector<float> r(data.size());
@@ -42,7 +42,7 @@ class traceDataMan_cl {
         else if (aCCb::caseInsensitiveStringCompare(".uint64", ext))
             dataByFilename[filename] = floatify(file2vec<uint64_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".txt", ext))
-            dataByFilename[filename] = aCCb::binaryIo::file2vec_asc<float>(filename);
+            dataByFilename[filename] = loadFloatVecFromTxt(filename);
         else
             throw aCCb::argObjException("unsupported data file extension (" + filename + ")");
     }
@@ -81,4 +81,47 @@ class traceDataMan_cl {
    protected:
     map<string, vector<float>> dataByFilename;
     map<string, vector<string>> annotationsByFilename;
+
+    //* Read binary data from file into vector */
+    template <class T>
+    static vector<T> file2vec(const string fname) {
+        std::ifstream is(fname, std::ifstream::binary);
+        if (!is)
+            throw runtime_error("failed to open file: " + fname);
+
+        is.seekg(0, std::ios_base::end);
+        std::size_t nBytes = is.tellg();
+        size_t elemSize = sizeof(T);
+        size_t nElem = nBytes / elemSize;
+        if (nElem * elemSize != nBytes)
+            throw runtime_error("binary file contains partial element: " + fname);
+
+        is.seekg(0, std::ios_base::beg);
+        vector<T> retVal(nElem);
+        is.read((char *)&retVal[0], nElem * sizeof(T));
+        if (!is)
+            throw runtime_error("read failed");
+        return retVal;
+    }
+
+    // read ASCII data from file into float vector. Non-parseable lines are returned as NAN, trailing data after a parseable number is ignored
+    static vector<float> loadFloatVecFromTxt(const string &filename) {
+        vector<float> r;
+        r.reserve(1000000);  // smaller data is unlikely / "don't-care" wrt performance
+
+        std::ifstream is(filename, std::ifstream::binary);
+        if (!is)
+            throw runtime_error("failed to open file: " + filename);
+
+        string line;
+        while (std::getline(is, line)) {
+            const char *str = line.c_str();
+            char *endptr;
+            float val = std::strtof(str, &endptr);
+            if (/*conversion failed*/ (endptr == str) || /*overrange */ (val == HUGE_VALF))
+                val = std::numeric_limits<float>::quiet_NaN();
+            r.push_back(val);
+        }
+        return r;
+    }
 };
