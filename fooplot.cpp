@@ -207,7 +207,8 @@ void usage() {
     cerr << "   -vertLineY (number) repeated use is allowed" << endl;
     cerr << "   -horLineX (number) repeated use is allowed" << endl;
     cerr << "   -marker (e.g. w.1 see [1])" << endl;
-    cerr << "   -annot (filename)" << endl;
+    cerr << "   -annot (filenameTxt)" << endl;
+    cerr << "   -annot2 (filenameIndex) (filenameTxt)" << endl;
     cerr << "   -mask (filename) (value)" << endl;
     cerr << "-xlabel (text)" << endl;
     cerr << "-ylabel (text)" << endl;
@@ -324,11 +325,21 @@ int main2(int argc, const char **argv) {
         const marker_cl *marker = markerMan.getMarker(t.marker);
         if (!marker)
             throw aCCb::argObjException("invalid marker description '" + t.marker + "'. Valid example: g.1");
+
+        vector<drawJob::annotation_cl> annotations;
+        for (annot2args &aInput : t.annotations) {
+            const vector<uint32_t> *pMapping = NULL;
+            if (aInput.mapFilename != "")
+                pMapping = traceDataMan.getUInt32Vec(aInput.mapFilename);
+            drawJob::annotation_cl aData(pMapping, traceDataMan.getAsciiVec(aInput.annotTxtFilename));
+            annotations.push_back(aData);
+        }
+
         //* one trace */
         drawJob j(
             traceDataMan.getFloatVec(t.dataX),
             traceDataMan.getFloatVec(t.dataY),
-            traceDataMan.getAsciiVecs(t.annotate),
+            annotations,
             marker,
             t.vertLineX,
             t.horLineY,

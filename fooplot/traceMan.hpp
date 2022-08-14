@@ -30,6 +30,12 @@ class traceDataMan_cl {
         return castVector<Tin, uint16_t>(data);
     }
 
+    // converts vector to uint32_t by casting elements individually
+    template <typename Tin>
+    static vector<uint32_t> castVectorToUint32(const vector<Tin> &data) {
+        return castVector<Tin, uint32_t>(data);
+    }
+
    public:
     traceDataMan_cl() {}
 
@@ -53,6 +59,16 @@ class traceDataMan_cl {
         return &uint16DataByFilename.at(fnCan);
     }
 
+    // returns contents of a given datafile as 32-bit unsigned vector
+    const vector<uint32_t> *getUInt32Vec(const string &filename) {
+        if (filename == "")
+            return NULL;
+
+        string fnCan = std::filesystem::canonical(filename).string();
+        loadAsUInt32(fnCan);  // note: underlying 'map' container does NOT invalidate iterators on insertion (= pointers previously returned)
+        return &uint32DataByFilename.at(fnCan);
+    }
+
     // returns contents of a given file (e.g. annotations) as literal ASCII text
     const vector<string> *getAsciiVec(const string &filename) {
         if (filename == "")
@@ -63,16 +79,19 @@ class traceDataMan_cl {
         return &asciiDataByFilename.at(fnCan);
     }
 
+#if 0
     const vector<const vector<string> *> getAsciiVecs(const vector<string> &filenames) {
         vector<const vector<string> *> r;
         for (const string &filename : filenames)
             r.push_back(getAsciiVec(filename));
         return r;
     }
+#endif
 
    protected:
     map<string, vector<float>> floatDataByFilename;
     map<string, vector<uint16_t>> uint16DataByFilename;
+    map<string, vector<uint32_t>> uint32DataByFilename;
     map<string, vector<string>> asciiDataByFilename;
 
     // loads data for retrieval by its filename as 32-bit float vector
@@ -113,7 +132,7 @@ class traceDataMan_cl {
     void loadAsUInt16(const string &filename) {
         if (filename == "")
             return;
-        if (uint16DataByFilename.find(filename) != uint16DataByFilename.end())
+        if (uint16DataByFilename.count(filename) > 0)
             return;
 
         // file extension identifies input data format
@@ -141,6 +160,42 @@ class traceDataMan_cl {
             uint16DataByFilename[filename] = castVectorToUint16(file2vec<uint64_t>(filename));
         else if (aCCb::caseInsensitiveStringCompare(".txt", ext))
             uint16DataByFilename[filename] = castVectorToUint16(loadFloatVecFromTxt(filename));
+        else
+            throw aCCb::argObjException("unsupported data file extension (" + filename + ")");
+    }
+
+    // loads data for retrieval by its filename as 32-bit unsigned integer vector
+    void loadAsUInt32(const string &filename) {
+        if (filename == "")
+            return;
+        if (uint32DataByFilename.count(filename) > 0)
+            return;
+
+        // file extension identifies input data format
+        string ext = std::filesystem::path(filename).extension().string();
+
+        if (aCCb::caseInsensitiveStringCompare(".float", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<float>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".double", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<double>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".int8", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<int8_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".uint8", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<uint8_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".int16", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<int16_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".uint16", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<uint16_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".int32", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<int32_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".uint32", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<uint32_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".int64", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<int64_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".uint64", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(file2vec<uint64_t>(filename));
+        else if (aCCb::caseInsensitiveStringCompare(".txt", ext))
+            uint32DataByFilename[filename] = castVectorToUint32(loadFloatVecFromTxt(filename));
         else
             throw aCCb::argObjException("unsupported data file extension (" + filename + ")");
     }

@@ -17,6 +17,14 @@ typedef uint8_t stencil_t;  // bool: 32 ms; uint8: 4.5 ms; uint16: 6 ms uint32_t
 
 // one "trace" (set of things to be rendered using a common marker by convolution)
 class drawJob {
+   public:
+    class annotation_cl {
+       public:
+        annotation_cl(const vector<uint32_t>* mapping, const vector<string>* annotText) : mapping(mapping), annotText(annotText) {}
+        const vector<uint32_t>* mapping;
+        const vector<string>* annotText;
+    };
+
    protected:
     // multithreaded job description, for segmenting a trace with a large nr. of points into multiple "jobs" that are rendered to stencil in parallel
     // note: passed by value - don't put anything large inside
@@ -53,7 +61,7 @@ class drawJob {
         const int width = job.p.getScreenWidth();
         const int height = job.p.getScreenHeight();
 
-        float plotX;  // for !hasX, use +1.0f increments instead of repeated int-to-float conversion
+        float plotX;  // if !hasX, use +1.0f increments instead of repeated int-to-float conversion
         if constexpr (!hasX)
             plotX = job.ixStart + 1.0f;
 
@@ -78,7 +86,7 @@ class drawJob {
    public:
     drawJob(const vector<float>* pDataX,
             const vector<float>* pDataY,
-            const vector<const vector<string>*> pAnnot,
+            const vector<drawJob::annotation_cl> pAnnot,
             const marker_cl* marker,
             vector<float> vertLineX,
             vector<float> horLineY,
@@ -326,10 +334,21 @@ class drawJob {
     // returns all annotations for a given point
     vector<string> getAnnotations(size_t ixPt) const {
         vector<string> r;
-        for (const vector<string>* a : pAnnot) {
-            assert(a != NULL);
-            if (ixPt < a->size())
-                r.push_back((*a)[ixPt]);
+        for (const annotation_cl& a : pAnnot) {
+            assert(a.annotText != NULL);
+            size_t ixLookup;
+            if (a.mapping != NULL) {
+                // === indirect lookup ===
+                if (ixPt >= a.mapping->size())
+                    continue;  // indirect mapping table too short
+                ixLookup = (*a.mapping)[ixPt];
+            } else {
+                // === direct lookup ===
+                ixLookup = ixPt;
+            }
+            if (ixLookup >= a.annotText->size())
+                continue;  // annotation text table too short
+            r.push_back((*a.annotText)[ixLookup]);
         }
         return r;
     }
@@ -342,7 +361,7 @@ class drawJob {
     // Y location of points (NULL: no data)
     const vector<float>* pDataY;
     // Annotations, one per pDataY point (trace may have any number of independent annotations)
-    const vector<const vector<string>*> pAnnot;
+    const vector<drawJob::annotation_cl> pAnnot;
     // vertical lines
     vector<float> vertLineX;
     // horizontal lines

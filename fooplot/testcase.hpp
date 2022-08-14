@@ -84,6 +84,8 @@ vector<string> testcase9() {
     vector<uint16_t> mask;
     vector<string> annotNS;
     vector<string> annotWE;
+    vector<uint32_t> annotIndir;
+    vector<string> annotIndirText{"Point lies in the northwest quadrant", "located northeast", "point in southwest quadrant", "this point is southeast"};
     for (double phi = 0; phi < 2.0 * M_PI; phi += 1e-4) {
         x.push_back(std::cos(phi));
         y.push_back(std::sin(phi));
@@ -92,15 +94,21 @@ vector<string> testcase9() {
         mask.push_back(maskVal);
         annotNS.push_back(y.back() < 0 ? "n" : "s");
         annotWE.push_back(x.back() < 0 ? "w" : "e");
+        annotIndir.push_back((x.back() < 0 ? 0 : 1) + (y.back() < 0 ? 2 : 0));
     }
+
     std::filesystem::create_directory("testdata");
     aCCb::binaryIo::vec2file("testdata/x.float", x);
     aCCb::binaryIo::vec2file("testdata/y.float", y);
     aCCb::binaryIo::vec2file("testdata/mask.uint16", mask);
     aCCb::binaryIo::vec2file("testdata/annotNS.txt", annotNS);
     aCCb::binaryIo::vec2file("testdata/annotWE.txt", annotWE);
+    aCCb::binaryIo::vec2file("testdata/annotIndir.uint32", annotIndir);
+    aCCb::binaryIo::vec2file("testdata/annotIndir.txt", annotIndirText);
 
     vector<string> r;
+    r.push_back("-title");
+    r.push_back("please press 'm' to enable marker");
     for (int maskVal = 0; maskVal < 4; ++maskVal) {
         r.push_back("-trace");
 
@@ -119,12 +127,16 @@ vector<string> testcase9() {
                     : (maskVal == 1) ? "bx2"
                     : (maskVal == 2) ? "rx2"
                                      : "yx2");
-                                     
+
         r.push_back("-annot");
         r.push_back("testdata/annotNS.txt");
 
-         r.push_back("-annot");
+        r.push_back("-annot");
         r.push_back("testdata/annotWE.txt");
+
+        r.push_back("-annot2");
+        r.push_back("testdata/annotIndir.uint32");
+        r.push_back("testdata/annotIndir.txt");
     }
     return r;
 }

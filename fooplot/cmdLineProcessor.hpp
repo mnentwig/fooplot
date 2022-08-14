@@ -8,6 +8,13 @@
 #include "aCCb/stringToNum.hpp"
 using std::vector, std::string, std::runtime_error;
 
+struct annot2args {
+    // name of the indirect mapping file (empty: direct mapping)
+    string mapFilename;
+    // annotation text
+    string annotTxtFilename;
+};
+
 // ==============================================================================
 // command line parser: '-trace' structure
 // ==============================================================================
@@ -40,9 +47,19 @@ class trace : public aCCb::argObj {
             float v;
             if (!aCCb::str2num(a, v)) throw aoException(state + ": failed to parse number ('" + a + "')");
             vertLineX.push_back(v);
-        } else if (state == "-annot")
-            annotate.push_back(a);
-        else if (state == "-mask") {
+        } else if (state == "-annot") {
+            annotations.push_back(annot2args());
+            annotations.back().mapFilename = "";
+            annotations.back().annotTxtFilename = a;
+        } else if (state == "-annot2") {
+            annotations.push_back(annot2args());
+            annotations.back().mapFilename = a;
+            state = "-annot2 (txt file)";
+            return true;
+        } else if (state == "-annot2 (txt file)") {
+            assert(annotations.size() > 0);
+            annotations.back().annotTxtFilename = a;
+        } else if (state == "-mask") {
             maskFile = a;
             state = "-mask (value)";
             return true;
@@ -61,10 +78,11 @@ class trace : public aCCb::argObj {
     vector<float> vertLineX;
     string maskFile;
     uint16_t maskVal;
-    vector<string> annotate;
+    vector<annot2args> annotations;
 
    protected:
-    const vector<string> stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX", "-annot", "-mask"};
+    const vector<string>
+        stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX", "-annot", "-annot2", "-mask"};
     const vector<string> switchArgs;
 };
 
