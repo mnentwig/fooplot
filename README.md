@@ -118,9 +118,9 @@ Each row of the given ASCII file corresponds to one data point of the trace and 
 ### -trace ... -annot2 (filenameIndex) (filenameTxt) optional
 The first (index) file holds an entry for each point of the trace that indexes a line (base 0) in the 2nd (text) file. 
 
-Readout is enabled with the 'm' key.
-
 This feature is an optimized variant of -annot if the number of unique annotation strings is much smaller than the population size (e.g. "city", "brand of car").
+
+Readout is enabled with the 'm' key.
 
 ### -trace ... -mask (filename) value
 filename is loaded as mask vector with one entry per plot data point. Only points with marker==value will be plotted.
