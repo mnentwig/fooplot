@@ -178,7 +178,7 @@ fooplot is written in C++ 17, designed for minimal library dependencies. It even
 
 It requires a compiled barebone fltk-1.3.8 source tree (./configure; make). 
 
-FLTK does not need to be installed, neither for development or deployment (just copy the .exe file), as it is linked statically.
+Other than providing the source tree at compile time, FLTK does not need to be installed. It is linked statically.
 
 By default (see makefile), the fltk-1.3.8 folder is expected one level above the root-level "fooplot" folder.
 
