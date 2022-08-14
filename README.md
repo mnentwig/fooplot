@@ -112,17 +112,17 @@ Adds a vertical line at the given X position. Any number of lines may be added b
 ### -trace ... -horLineY (number) optional, repeatable
 Adds a horizontal line at the given Y position. Any number of lines may be added by repeating -horLineY (number)
 
-### -trace ... -annot (filenameTxt) optional
+### -trace ... -annot (filenameTxt) optional, repeatable
 Each row of the given ASCII file corresponds to one data point of the trace and will be shown in the marker display (enable with 'm' key)
 
-### -trace ... -annot2 (filenameIndex) (filenameTxt) optional
+### -trace ... -annot2 (filenameIndex) (filenameTxt) optional, repeatable
 The first (index) file holds an entry for each point of the trace that indexes a line (base 0) in the 2nd (text) file. 
 
 This feature is an optimized variant of -annot if the number of unique annotation strings is much smaller than the population size (e.g. "city", "brand of car").
 
 Readout is enabled with the 'm' key.
 
-### -trace ... -mask (filename) value
+### -trace ... -mask (filename) (number) optional
 filename is loaded as mask vector with one entry per plot data point. Only points with marker==value will be plotted.
 
 Note: internally, mask data is converted to 16 bit width. Therefore, "value" must be in 0..65535 range.
