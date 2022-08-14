@@ -120,7 +120,7 @@ The first (index) file holds an entry for each point of the trace that indexes a
 
 Readout is enabled with the 'm' key.
 
-This feature is an optimized variant of -annot if the number of unique annotation strings is much smaller than the population size (e.g. "city" or "brand of car").
+This feature is an optimized variant of -annot if the number of unique annotation strings is much smaller than the population size (e.g. "city", "brand of car").
 
 ### -trace ... -mask (filename) value
 filename is loaded as mask vector with one entry per plot data point. Only points with marker==value will be plotted.
