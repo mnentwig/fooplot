@@ -1,6 +1,5 @@
 #pragma once
 #include <deque>
-#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -28,9 +27,9 @@ class trace : public aCCb::argObj {
 
     bool acceptArg_stateSet(const string &a) {
         if (state == "-dataX")
-            dataX = std::filesystem::canonical(a).string();
+            dataX = a;
         else if (state == "-dataY")
-            dataY = std::filesystem::canonical(a).string();
+            dataY = a;
         else if (state == "-marker")
             marker = a;
         else if (state == "-horLineY") {
@@ -42,7 +41,7 @@ class trace : public aCCb::argObj {
             if (!aCCb::str2num(a, v)) throw aoException(state + ": failed to parse number ('" + a + "')");
             vertLineX.push_back(v);
         } else if (state == "-annot")
-            annotate = a;
+            annotate.push_back(a);
         else if (state == "-mask") {
             maskFile = a;
             state = "-mask (value)";
@@ -62,7 +61,7 @@ class trace : public aCCb::argObj {
     vector<float> vertLineX;
     string maskFile;
     uint16_t maskVal;
-    string annotate;
+    vector<string> annotate;
 
    protected:
     const vector<string> stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX", "-annot", "-mask"};

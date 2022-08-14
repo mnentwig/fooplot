@@ -1,5 +1,5 @@
 #pragma once
-#include <fstream>    // ifstream
+#include <fstream>  // ifstream
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -23,6 +23,16 @@ void vec2file(const string &fname, const vector<T> &vec) {
     if (!os)
         throw runtime_error("failed to open file");
     binIo::vec2stream<T>(os, vec);
+}
+
+//* vec2file: Write string vector into stream */
+template <>
+void vec2file(const string &fname, const vector<string> &vec) {
+    fstream os(fname.c_str(), std::ios::out | std::ifstream::binary);
+    if (!os)
+        throw runtime_error("failed to open file");
+    for (auto s : vec)
+        os << s << "\n";
 }
 
 }  // namespace aCCb::binaryIo

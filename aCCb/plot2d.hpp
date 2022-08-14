@@ -576,15 +576,17 @@ class plot2d : public Fl_Box {
         // === draw annotation ===
         if (cursorFlag && (cursorHighlight.annot.size() > 0)) {
             fl_color(FL_GREEN);
-            int x = p.getScreenX0();
-            int y = p.getScreenY0() - cursorHighlight.annot.size() * fontsize;
+            int x = p.getScreenX0() + fontsize / 2;
+            int y = p.getScreenY0() - cursorHighlight.annot.size() * fontsize - fontsize / 2;
             for (size_t ix = 0; ix < cursorHighlight.annot.size(); ++ix) {
                 vector<array<float, 4>> geom = aCCb::vectorFont::renderText(cursorHighlight.annot[ix].c_str());
+                // create bold black background
                 fl_color(FL_BLACK);
                 aCCbWidget::renderText(geom, fontsize, x - 1, y - 1);
                 aCCbWidget::renderText(geom, fontsize, x - 1, y + 1);
                 aCCbWidget::renderText(geom, fontsize, x + 1, y - 1);
                 aCCbWidget::renderText(geom, fontsize, x + 1, y + 1);
+                // draw text in green
                 fl_color(FL_GREEN);
                 aCCbWidget::renderText(geom, fontsize, x, y);
                 y += fontsize;
@@ -637,16 +639,14 @@ class plot2d : public Fl_Box {
                 adj.getPt(highlightIxTrace, highlightIxPt, x, y);
                 ss = std::stringstream();
                 ss << " pt:[" << x << ", " << y << "] ";
-                annot.push_back(ss.str().c_str());
+                annot.push_back(ss.str());
 
-                string a;
-                if (adj.getAnnotation(highlightIxTrace, highlightIxPt, /*out*/ a)) {
-                    ss = std::stringstream();
-                    ss << " '" << a << "' ";
-                    annot.push_back(ss.str().c_str());
-                }
+                vector<string> allAnnot = adj.getAnnotations(highlightIxTrace, highlightIxPt);
+                for (const string& oneAnnot : allAnnot)
+                    annot.push_back(oneAnnot);
             }
         }
+
         double cursorX = std::numeric_limits<double>::quiet_NaN();
         double cursorY = std::numeric_limits<double>::quiet_NaN();
         size_t highlightIxTrace;

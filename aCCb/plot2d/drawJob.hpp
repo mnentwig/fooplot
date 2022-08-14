@@ -46,6 +46,8 @@ class drawJob {
         vector<stencil_t>* pStencil;
     };
 
+    // worker function to draw part of a trace into a stencil (parallelized)
+    // template variants are separate at compile time for performance
     template <bool hasX, bool hasMask>
     static void drawDots(const job_t job) {
         const int width = job.p.getScreenWidth();
@@ -74,8 +76,22 @@ class drawJob {
     }
 
    public:
-    drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const vector<string>* pAnnot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY, const vector<uint16_t>* pMask, uint16_t maskVal)
-        : marker(marker), pDataX(pDataX), pDataY(pDataY), pAnnot(pAnnot), vertLineX(vertLineX), horLineY(horLineY), pMask(pMask), maskVal(maskVal) {}
+    drawJob(const vector<float>* pDataX,
+            const vector<float>* pDataY,
+            const vector<const vector<string>*> pAnnot,
+            const marker_cl* marker,
+            vector<float> vertLineX,
+            vector<float> horLineY,
+            const vector<uint16_t>* pMask,
+            uint16_t maskVal)
+        : marker(marker),
+          pDataX(pDataX),
+          pDataY(pDataY),
+          pAnnot(pAnnot),
+          vertLineX(vertLineX),
+          horLineY(horLineY),
+          pMask(pMask),
+          maskVal(maskVal) {}
 
     // draws only horizontal and vertical lines to screen without use of a stencil
     void drawLinesDirectly(const proj<double> pScreen) {
@@ -299,7 +315,7 @@ class drawJob {
         return r;
     }
 
-    void getPt(size_t ixPt, float& x, float& y) {
+    void getPt(size_t ixPt, float& x, float& y) const {
         if (pDataX != NULL)
             x = (*pDataX)[ixPt];
         else
@@ -307,13 +323,15 @@ class drawJob {
         y = (*pDataY)[ixPt];
     }
 
-    bool getAnnotation(size_t ixPt, /*out*/ string& a) {
-        if (pAnnot == NULL) return false;
-        if (ixPt < pAnnot->size()) {
-            a = (*pAnnot)[ixPt];
-            return true;
+    // returns all annotations for a given point
+    vector<string> getAnnotations(size_t ixPt) const {
+        vector<string> r;
+        for (const vector<string>* a : pAnnot) {
+            assert(a != NULL);
+            if (ixPt < a->size())
+                r.push_back((*a)[ixPt]);
         }
-        return false;
+        return r;
     }
 
     const marker_cl* marker;
@@ -323,8 +341,8 @@ class drawJob {
     const vector<float>* pDataX;
     // Y location of points (NULL: no data)
     const vector<float>* pDataY;
-    // Annotations, one per pDataY point (NULL: no annotations)
-    const vector<string>* pAnnot;
+    // Annotations, one per pDataY point (trace may have any number of independent annotations)
+    const vector<const vector<string>*> pAnnot;
     // vertical lines
     vector<float> vertLineX;
     // horizontal lines

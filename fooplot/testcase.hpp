@@ -82,33 +82,49 @@ vector<string> testcase9() {
     vector<float> x;
     vector<float> y;
     vector<uint16_t> mask;
+    vector<string> annotNS;
+    vector<string> annotWE;
     for (double phi = 0; phi < 2.0 * M_PI; phi += 1e-4) {
         x.push_back(std::cos(phi));
         y.push_back(std::sin(phi));
         uint16_t maskVal = x.back() < 0 ? 0 : 1;
         maskVal += y.back() < 0 ? 0 : 2;
         mask.push_back(maskVal);
+        annotNS.push_back(y.back() < 0 ? "n" : "s");
+        annotWE.push_back(x.back() < 0 ? "w" : "e");
     }
     std::filesystem::create_directory("testdata");
     aCCb::binaryIo::vec2file("testdata/x.float", x);
     aCCb::binaryIo::vec2file("testdata/y.float", y);
     aCCb::binaryIo::vec2file("testdata/mask.uint16", mask);
+    aCCb::binaryIo::vec2file("testdata/annotNS.txt", annotNS);
+    aCCb::binaryIo::vec2file("testdata/annotWE.txt", annotWE);
 
     vector<string> r;
     for (int maskVal = 0; maskVal < 4; ++maskVal) {
         r.push_back("-trace");
+
         r.push_back("-dataX");
         r.push_back("testdata/x.float");
+
         r.push_back("-dataY");
         r.push_back("testdata/y.float");
+
         r.push_back("-mask");
         r.push_back("testdata/mask.uint16");
+
         r.push_back(std::to_string(maskVal));
         r.push_back("-marker");
         r.push_back((maskVal == 0)   ? "gx1"
                     : (maskVal == 1) ? "bx2"
                     : (maskVal == 2) ? "rx2"
                                      : "yx2");
+                                     
+        r.push_back("-annot");
+        r.push_back("testdata/annotNS.txt");
+
+         r.push_back("-annot");
+        r.push_back("testdata/annotWE.txt");
     }
     return r;
 }

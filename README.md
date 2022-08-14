@@ -9,6 +9,16 @@ fooplot is build from ground up for speed, up to RAM limits.
 ## Example screenshot
 <img src="www/screenshot1.png">
 
+## Marker
+The cursor display can be enabled with the "m" key: 
+
+<img src="www/markerFeatures.png">
+
+* shows the position of the mouse ('cur:')
+* shows the point closest to the mouse (highlighted by a red/blue cross)
+* prints the position of the closest point ('pt:')
+* prints any data annotations (set with -annot) for the closest point. In the screenshot, the first annotation reads 's' for the 'south' half of the plot, the second annotation reads 'e' for the 'east' half of the plot.
+
 ## Masking data (use model)
 A typical use case is to visually separate data by some criteria (e.g. plot in different colors) and look for patterns. 
 

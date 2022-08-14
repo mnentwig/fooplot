@@ -33,11 +33,51 @@ class traceDataMan_cl {
    public:
     traceDataMan_cl() {}
 
+    // returns contents of a given datafile as 32-bit float vector
+    const vector<float> *getFloatVec(const string &filename) {
+        if (filename == "")
+            return NULL;
+
+        string fnCan = std::filesystem::canonical(filename).string();
+        loadAsFloat(fnCan);  // note: underlying 'map' container does NOT invalidate iterators on insertion (= pointers previously returned)
+        return &floatDataByFilename.at(fnCan);
+    }
+
+    // returns contents of a given datafile as 16-bit unsigned vector
+    const vector<uint16_t> *getUInt16Vec(const string &filename) {
+        if (filename == "")
+            return NULL;
+
+        string fnCan = std::filesystem::canonical(filename).string();
+        loadAsUInt16(fnCan);  // note: underlying 'map' container does NOT invalidate iterators on insertion (= pointers previously returned)
+        return &uint16DataByFilename.at(fnCan);
+    }
+
+    // returns contents of a given file (e.g. annotations) as literal ASCII text
+    const vector<string> *getAsciiVec(const string &filename) {
+        if (filename == "")
+            return NULL;
+
+        string fnCan = std::filesystem::canonical(filename).string();
+        loadAsLiteralAscii(fnCan);
+        return &asciiDataByFilename.at(fnCan);
+    }
+
+    const vector<const vector<string> *> getAsciiVecs(const vector<string> &filenames) {
+        vector<const vector<string> *> r;
+        for (const string &filename : filenames)
+            r.push_back(getAsciiVec(filename));
+        return r;
+    }
+
+   protected:
+    map<string, vector<float>> floatDataByFilename;
+    map<string, vector<uint16_t>> uint16DataByFilename;
+    map<string, vector<string>> asciiDataByFilename;
+
     // loads data for retrieval by its filename as 32-bit float vector
     void loadAsFloat(const string &filename) {
-        if (filename == "")
-            return;
-        if (floatDataByFilename.find(filename) != floatDataByFilename.end())
+        if (floatDataByFilename.count(filename) > 0)
             return;
 
         // file extension identifies input data format
@@ -105,50 +145,21 @@ class traceDataMan_cl {
             throw aCCb::argObjException("unsupported data file extension (" + filename + ")");
     }
 
-    void loadAnnotations(const string &filename) {
+    // loads literal ASCII data for retrieval by its filename
+    void loadAsLiteralAscii(const string &filename) {
         if (filename == "")
             return;
+        if (asciiDataByFilename.count(filename) > 0)
+            return;
 
-        vector<string> r;
         std::ifstream is(filename);
         if (!is.is_open()) throw runtime_error("failed to open file (r): '" + filename + "')");
+
+        vector<string> &r = asciiDataByFilename[filename];  // creates new, empty vector
         string line;
         while (std::getline(is, line))
             r.push_back(line);
-        annotationsByFilename[filename] = r;
     }
-
-    const vector<string> *getAnnotations(const string &filename) const {
-        if (filename == "")
-            return NULL;
-        auto it = annotationsByFilename.find(filename);
-        if (it == annotationsByFilename.end())
-            throw runtime_error("datafile should have been loaded but does not exist");
-        return &(it->second);
-    }
-
-    const vector<float> *getFloatVec(const string &filename) {
-        if (filename == "")
-            return NULL;
-        auto it = floatDataByFilename.find(filename);
-        if (it == floatDataByFilename.end())
-            throw runtime_error("datafile should have been loaded but does not exist");
-        return &(it->second);
-    }
-
-    const vector<uint16_t> *getUInt16Vec(const string &filename) {
-        if (filename == "")
-            return NULL;
-        auto it = uint16DataByFilename.find(filename);
-        if (it == uint16DataByFilename.end())
-            throw runtime_error("datafile should have been loaded but does not exist");
-        return &(it->second);
-    }
-
-   protected:
-    map<string, vector<float>> floatDataByFilename;
-    map<string, vector<uint16_t>> uint16DataByFilename;
-    map<string, vector<string>> annotationsByFilename;
 
     //* Read binary data from file into vector */
     template <class T>

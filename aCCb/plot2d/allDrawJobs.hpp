@@ -89,13 +89,16 @@ class allDrawJobs_cl {
     }
 
     void getPt(size_t ixTrace, size_t ixPt, float& x, float& y) {
+        assert(ixTrace < drawJobs.size());
         drawJobs[ixTrace].getPt(ixPt, x, y);
     }
-    bool getAnnotation(size_t ixTrace, size_t ixPt, /*out*/ string& a) {
-        return drawJobs[ixTrace].getAnnotation(ixPt, a);
+
+    // returns all annotations for a given point on a given trace
+    vector<string> getAnnotations(size_t ixTrace, size_t ixPt) const {
+        assert(ixTrace < drawJobs.size());
+        return drawJobs[ixTrace].getAnnotations(ixPt);
     }
 
    protected:
-    vector<drawJob>
-        drawJobs;
+    vector<drawJob> drawJobs;
 };

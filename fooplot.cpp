@@ -317,25 +317,24 @@ int main2(int argc, const char **argv) {
     //* provides all markers */
     markerMan_cl markerMan;
 
+    //* all traces */
     allDrawJobs_cl allDrawJobs;
 
     for (auto t : l.traces) {
         const marker_cl *marker = markerMan.getMarker(t.marker);
         if (!marker)
             throw aCCb::argObjException("invalid marker description '" + t.marker + "'. Valid example: g.1");
-        traceDataMan.loadAsFloat(t.dataX);
-        traceDataMan.loadAsFloat(t.dataY);
-        traceDataMan.loadAsUInt16(t.maskFile);
-        traceDataMan.loadAnnotations(t.annotate);
+        //* one trace */
         drawJob j(
             traceDataMan.getFloatVec(t.dataX),
             traceDataMan.getFloatVec(t.dataY),
-            traceDataMan.getAnnotations(t.annotate),
+            traceDataMan.getAsciiVecs(t.annotate),
             marker,
             t.vertLineX,
             t.horLineY,
             traceDataMan.getUInt16Vec(t.maskFile),
             t.maskVal);
+
         allDrawJobs.addDrawJob(j);
     }
 
