@@ -1394,7 +1394,7 @@ std::vector<std::array<float, 4>> renderText(const char* text) {
 
             x1 += curX;
             x2 += curX;
-            if (glyphIx > 0) { // don't render space (a dot)
+            if (glyphIx > 0) {  // don't render space (a dot)
                 std::array<float, 4> v{f * x1, f * y1, f * x2, f * y2};
                 r.push_back(v);
             }
@@ -1408,26 +1408,67 @@ std::vector<std::array<float, 4>> renderText(const string& text) {
     return renderText(text.c_str());
 }
 
-std::array<float, 4> getBoundingBox(const std::vector<std::array<float, 4>>& vec) {
-    const float inf = std::numeric_limits<float>::infinity();
-    std::array<float, 4> r{inf, inf, -inf, -inf};
-    for (auto v : vec) {
-        r[0] = std::min(r[0], v[0]);  // xMin
-        r[0] = std::min(r[0], v[2]);
-        r[1] = std::min(r[1], v[1]);  // yMin
-        r[1] = std::min(r[1], v[3]);
-        r[2] = std::max(r[2], v[0]);  // xMax
-        r[2] = std::max(r[2], v[2]);
-        r[3] = std::max(r[3], v[1]);  // yMax
-        r[3] = std::max(r[3], v[3]);
+// text bounding box
+class bbox {
+   public:
+    // default constructor. Never overlaps.
+    bbox() : x0(std::numeric_limits<float>::infinity()),
+             x1(-std::numeric_limits<float>::infinity()),
+             y0(std::numeric_limits<float>::infinity()),
+             y1(-std::numeric_limits<float>::infinity()) {}
+
+    bbox(const std::vector<std::array<float, 4>>& geom) : bbox() {
+        for (auto v : geom) {
+            x0 = std::min(x0, v[0]);  // xMin
+            x0 = std::min(x0, v[2]);
+            y0 = std::min(y0, v[1]);  // yMin
+            y0 = std::min(y0, v[3]);
+            x1 = std::max(x1, v[0]);  // xMax
+            x1 = std::max(x1, v[2]);
+            y1 = std::max(y1, v[1]);  // yMax
+            y1 = std::max(y1, v[3]);
+        }
     }
-    return r;
-}
+
+    void offset(float dx, float dy) {
+        x0 += dx;
+        x1 += dx;
+        y0 += dy;
+        y1 += dy;
+    }
+
+    void extend(float dx, float dy) {
+        x0 -= dx / 2;
+        x1 += dx / 2;
+        y0 -= dy / 2;
+        y1 += dy / 2;
+    }
+
+    float getX0() { return x0; }
+    float getY0() { return y0; }
+    float getX1() { return x1; }
+    float getY1() { return y1; }
+    float getWidth() { return x1 - x0; }
+    float getHeight() { return y1 - y0; }
+    bool overlaps(const bbox& arg) {
+        if (arg.x1 < x0) return false;
+        if (arg.x0 >= x1) return false;
+        if (arg.y1 < y0) return false;
+        if (arg.y0 >= y1) return false;
+        return true;
+    }
+
+   protected:
+    float x0;
+    float x1;
+    float y0;
+    float y1;
+};
 
 std::vector<std::array<float, 4>> centerX(const std::vector<std::array<float, 4>>& geom) {
-    std::array<float, 4> bbox = getBoundingBox(geom);
+    bbox b(geom);
     std::vector<std::array<float, 4>> r;
-    float width = bbox[2] - bbox[0];
+    float width = b.getWidth();
     float offset = -width / 2;
     for (std::array<float, 4> a : geom) {  // copies
         a[0] += offset;
@@ -1437,20 +1478,10 @@ std::vector<std::array<float, 4>> centerX(const std::vector<std::array<float, 4>
     return r;
 }
 
-int getWidth(const std::vector<std::array<float, 4>>& geom) {
-    std::array<float, 4> bbox = getBoundingBox(geom);
-    return bbox[2] - bbox[0];
-};
-
-int getHeight(const std::vector<std::array<float, 4>>& geom) {
-    std::array<float, 4> bbox = getBoundingBox(geom);
-    return bbox[3] - bbox[1];
-};
-
 std::vector<std::array<float, 4>> centerY(const std::vector<std::array<float, 4>>& geom) {
-    std::array<float, 4> bbox = getBoundingBox(geom);
+    bbox b(geom);
     std::vector<std::array<float, 4>> r;
-    float height = bbox[3] - bbox[1];
+    float height = b.getHeight();
     float offset = -height / 2;
     for (std::array<float, 4> a : geom) {  // copies
         a[1] += offset;
@@ -1468,6 +1499,14 @@ void rotate270(std::vector<std::array<float, 4>>& geom) {
         geom[ix][2] = -e[3];
         geom[ix][3] = e[2];
     }
+}
+
+/** scales by fontsize and moves to x0/y0 */
+static std::vector<std::array<float, 4>> project(std::vector<std::array<float, 4>> textVec, float fontsize, float x0, float y0) {
+    std::vector<std::array<float, 4>> r;
+    for (auto v : textVec)
+        r.push_back({fontsize * v[0] + x0, fontsize * v[1] + y0, fontsize * v[2] + x0, fontsize * v[3] + y0});
+    return r;
 }
 
 }  // namespace vectorFont

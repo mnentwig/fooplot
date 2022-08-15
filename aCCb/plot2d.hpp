@@ -271,23 +271,23 @@ class plot2d : public Fl_Box {
     void drawTitle(const proj<double>& p) const {
         vector<array<float, 4>> geom = aCCb::vectorFont::renderText(title);
         geom = aCCb::vectorFont::centerX(geom);
-        int w = aCCb::vectorFont::getWidth(geom);
-        aCCbWidget::renderText(geom, titleFontsize, p.getScreenXCenter() - w, p.getScreenY1() - titleFontsize);
+        aCCb::vectorFont::bbox b(geom);
+        aCCbWidget::renderText(geom, titleFontsize, p.getScreenXCenter() - b.getWidth(), p.getScreenY1() - titleFontsize);
     }
 
     void drawXlabel(const proj<double>& p) const {
         vector<array<float, 4>> geom = aCCb::vectorFont::renderText(xlabel);
         geom = aCCb::vectorFont::centerX(geom);
-        int w = aCCb::vectorFont::getWidth(geom);
-        aCCbWidget::renderText(geom, axisLabelFontsize, p.getScreenXCenter() - w, p.getScreenY0() + fontsize);
+        aCCb::vectorFont::bbox b(geom);
+        aCCbWidget::renderText(geom, axisLabelFontsize, p.getScreenXCenter() - b.getWidth(), p.getScreenY0() + fontsize);
     }
 
     void drawYlabel(const proj<double>& p) const {
         vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ylabel);
         aCCb::vectorFont::rotate270(geom);
         geom = aCCb::vectorFont::centerY(geom);
-        int h = aCCb::vectorFont::getHeight(geom);
-        aCCbWidget::renderText(geom, axisLabelFontsize, p.getScreenX0() - fontsize, p.getScreenYCenter() - h);
+        aCCb::vectorFont::bbox b(geom);
+        aCCbWidget::renderText(geom, axisLabelFontsize, p.getScreenX0() - fontsize, p.getScreenYCenter() - b.getHeight());
     }
 
    public:
@@ -394,9 +394,9 @@ class plot2d : public Fl_Box {
     }
 
    protected:
-    void drawAxes(const proj<double> p) {
+    // draws title, labels, axes
+    void drawPlotDecorations(const proj<double>& p) {
         drawTitle(p);
-        drawXlabel(p);
         drawXlabel(p);
         drawYlabel(p);
         vector<double> xAxisDeltas = axisTics::getTicDelta(x0, x1);
@@ -419,18 +419,37 @@ class plot2d : public Fl_Box {
 
         // === draw x axis major tics and numbers ===
         vector<string> xAxisTicsMajorStr = axisTics::formatTicVals(xAxisTicsMajor, xAxisDeltaMajor);
+        aCCb::vectorFont::bbox lastBbox;                         // note: default constructed bbox never overlaps
         for (size_t ix = 0; ix < xAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             double ticX = xAxisTicsMajor[ix];
 
+            // === long line across the plot ===
             fl_color(FL_DARK_GREEN);
             aCCbWidget::line(p.projX(ticX), p.projY(y0), p.projX(ticX), p.projY(y1));
 
+            // === short tic line ===
             fl_color(FL_GREEN);
             aCCbWidget::line(p.projX(ticX), p.projY(y0), p.projX(ticX), p.projY(y0) - majorTicLength);
+
+            // === tic label ===
             string ticStr = xAxisTicsMajorStr[ix];
             vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ticStr.c_str());
             geom = aCCb::vectorFont::centerX(geom);
-            aCCbWidget::renderText(geom, fontsize, p.projX(ticX), p.projY(y0));
+            int originX = p.projX(ticX);
+            int originY = p.projY(y0);
+            geom = aCCb::vectorFont::project(geom, fontsize, originX, originY);
+
+            // === tic label text ===
+            // get label text bounding box
+            aCCb::vectorFont::bbox b(geom);
+            // enforce some "space" between tic labels
+            b.extend(/*dx*/ fontsize, /*dy*/ 0);
+
+            // draw only if no collision with the last one
+            if (!b.overlaps(lastBbox)) {
+                aCCbWidget::renderText(geom);
+                lastBbox = b;
+            } 
         }
 
         vector<double> yAxisDeltas = axisTics::getTicDelta(y0, y1);
@@ -446,6 +465,7 @@ class plot2d : public Fl_Box {
 
         // === draw x axis major tics and numbers ===
         vector<string> yAxisTicsMajorStr = axisTics::formatTicVals(yAxisTicsMajor, yAxisDeltaMajor);
+        lastBbox = aCCb::vectorFont::bbox();
         for (size_t ix = 0; ix < yAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             double ticY = yAxisTicsMajor[ix];
 
@@ -454,11 +474,28 @@ class plot2d : public Fl_Box {
             fl_color(FL_GREEN);
 
             aCCbWidget::line(p.projX(x0), p.projY(ticY), p.projX(x0) + majorTicLength, p.projY(ticY));
+
+            // === tic label ===
             string ticStr = yAxisTicsMajorStr[ix];
             vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ticStr.c_str());
             aCCb::vectorFont::rotate270(geom);
             geom = aCCb::vectorFont::centerY(geom);
-            aCCbWidget::renderText(geom, fontsize, p.projX(x0), p.projY(ticY));
+
+            int originX = p.projX(x0);
+            int originY = p.projY(ticY);
+            geom = aCCb::vectorFont::project(geom, fontsize, originX, originY);
+
+            // === tic label text ===
+            // get label text bounding box
+            aCCb::vectorFont::bbox b(geom);
+            // enforce some "space" between tic labels
+            b.extend(/*dx*/ 0, /*dy*/ fontsize);
+
+            // draw only if no collision with the last one
+            if (!b.overlaps(lastBbox)) {
+                aCCbWidget::renderText(geom);
+                lastBbox = b;
+            } 
         }
         fl_pop_clip();
     }
@@ -515,7 +552,7 @@ class plot2d : public Fl_Box {
 
         {
             // auto begin = std::chrono::high_resolution_clock::now();
-            this->drawAxes(p);
+            this->drawPlotDecorations(p);
             // auto end = std::chrono::high_resolution_clock::now();
             // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
             // cout << "axes:\t" << 1e-6 * (double)duration << " ms" << endl;
