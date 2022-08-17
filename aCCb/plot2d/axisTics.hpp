@@ -8,6 +8,32 @@ using std::vector, std::string;
 //* decides where to place the axis tics, formats the text labels */
 class axisTics {
    public:
+    // represents an axis tic value, facing the problem there may not be enough space to print them all
+    struct ticVal {
+       public:
+        ticVal(double val, int64_t quant) : val(val) {
+            if (quant == 0) {
+                decimationLevel = std::numeric_limits<size_t>::max();
+                return;
+            }
+            decimationLevel = 0;
+            while (quant % 10 == 0) {
+                decimationLevel += 3;
+                quant /= 10;
+            }
+            if (quant % 5 == 0) {
+                decimationLevel += 2;
+                return;  // rules out 2 as 10=5*2
+            }
+            if (quant % 2 == 0)
+                decimationLevel += 1;
+        }
+        // value of an axis tic, to be printed if there is space
+        double val;
+        // the higher the decimation level, the more fundamental.
+        size_t decimationLevel;
+    };
+
     //* Determines axis grid. Returns vector with minorTic, majorTic spacings
     static vector<double> getTicDelta(double startVal, double endVal) {
         double range = std::abs(endVal - startVal);
@@ -30,10 +56,10 @@ class axisTics {
     }
 
     //* given a spacing, calculate the absolute tic values */
-    static vector<double> getTicVals(double startVal, double endVal, double ticDelta) {
-        vector<double> r;
+    static vector<ticVal> getTicVals(double startVal, double endVal, double ticDelta) {
+        vector<ticVal> r;
         if (ticDelta == 0) {
-            r.push_back(0);
+            r.push_back(ticVal(0.0, 0));
             return r;
         }
 
@@ -50,15 +76,15 @@ class axisTics {
             if ((tic >= startVal - 0.001 * ticDelta) && (tic <= endVal + 0.001 * ticDelta)) {
                 // === add gridVal as a tic division ===
                 if (!quant)
-                    r.push_back(0);  // avoid roundoff error at origin
+                    r.push_back(ticVal(0.0, quant));  // avoid roundoff error at origin
                 else
-                    r.push_back(tic);
+                    r.push_back(ticVal(tic, quant));
             }
         }
         return r;
     }
 
-    static vector<string> formatTicVals(const vector<double>& ticVals, double ticDelta) {
+    static vector<string> formatTicVals(const vector<ticVal>& ticVals, double ticDelta) {
         size_t precision = 0;
         while (precision < 18) {
             if (ticDelta > 0.9999)  // 1, 2 or 5
@@ -68,11 +94,11 @@ class axisTics {
         }
 
         vector<string> r;
-        for (double v : ticVals) {
+        for (const ticVal& tv : ticVals) {
             std::stringstream ss;
             ss << std::fixed;
             ss.precision(precision);
-            ss << v;
+            ss << tv.val;
             r.push_back(ss.str());
         }
         return r;

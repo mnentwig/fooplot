@@ -329,9 +329,15 @@ class plot2d : public Fl_Box {
 
         // apply result, if meaningful
         const float eps = 1e-16;  // fallback: "0.1 femto"
+        // check for non-zero span
         bool validX = (scaleX1 ? x1f : x1) - (scaleX0 ? x0f : x0) > eps;
         if (scaleX0 && validX) x0 = x0f;
         if (scaleX1 && validX) x1 = x1f;
+
+        // === add margin to autoscale range ===
+        double gap = x1 - x0;
+        if (scaleX0 && validX) x0 -= gap * autoscaleMarginOneSided;
+        if (scaleX1 && validX) x1 += gap * autoscaleMarginOneSided;
 
         // check success
         if (!validX)
@@ -361,6 +367,11 @@ class plot2d : public Fl_Box {
         bool validY = (scaleY1 ? y1f : y1) - (scaleY0 ? y0f : y0) > eps;
         if (scaleY0 && validY) y0 = y0f;
         if (scaleY1 && validY) y1 = y1f;
+
+        // === add margin to autoscale range ===
+        double gap = y1 - y0;
+        if (scaleY0 && validY) y0 -= gap * autoscaleMarginOneSided;
+        if (scaleY1 && validY) y1 += gap * autoscaleMarginOneSided;
 
         // check success
         if (!validY)
@@ -403,8 +414,8 @@ class plot2d : public Fl_Box {
         double xAxisDeltaMajor = xAxisDeltas[0];
         double xAxisDeltaMinor = xAxisDeltas[1];
 
-        vector<double> xAxisTicsMajor = axisTics::getTicVals(x0, x1, xAxisDeltaMajor);
-        vector<double> xAxisTicsMinor = axisTics::getTicVals(x0, x1, xAxisDeltaMinor);
+        const vector<axisTics::ticVal> xAxisTicsMajor = axisTics::getTicVals(x0, x1, xAxisDeltaMajor);
+        const vector<axisTics::ticVal> xAxisTicsMinor = axisTics::getTicVals(x0, x1, xAxisDeltaMinor);
 
         // === draw axes ===
         fl_push_clip(x(), y(), w(), h());
@@ -414,28 +425,28 @@ class plot2d : public Fl_Box {
             p.projX(x1), p.projY(y0));  // bottom right
 
         // === draw x axis minor tics ===
-        for (double ticX : xAxisTicsMinor)  // draw minor tics before data
-            aCCbWidget::line(p.projX(ticX), p.projY(y0), p.projX(ticX), p.projY(y0) - minorTicLength);
+        for (const axisTics::ticVal& ticX : xAxisTicsMinor)  // draw minor tics before data
+            aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y0) - minorTicLength);
 
         // === draw x axis major tics and numbers ===
         vector<string> xAxisTicsMajorStr = axisTics::formatTicVals(xAxisTicsMajor, xAxisDeltaMajor);
         aCCb::vectorFont::bbox lastBbox;                         // note: default constructed bbox never overlaps
         for (size_t ix = 0; ix < xAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
-            double ticX = xAxisTicsMajor[ix];
+            const axisTics::ticVal& ticX = xAxisTicsMajor[ix];
 
             // === long line across the plot ===
             fl_color(FL_DARK_GREEN);
-            aCCbWidget::line(p.projX(ticX), p.projY(y0), p.projX(ticX), p.projY(y1));
+            aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y1));
 
             // === short tic line ===
             fl_color(FL_GREEN);
-            aCCbWidget::line(p.projX(ticX), p.projY(y0), p.projX(ticX), p.projY(y0) - majorTicLength);
+            aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y0) - majorTicLength);
 
             // === tic label ===
             string ticStr = xAxisTicsMajorStr[ix];
             vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ticStr.c_str());
             geom = aCCb::vectorFont::centerX(geom);
-            int originX = p.projX(ticX);
+            int originX = p.projX(ticX.val);
             int originY = p.projY(y0);
             geom = aCCb::vectorFont::project(geom, fontsize, originX, originY);
 
@@ -449,31 +460,31 @@ class plot2d : public Fl_Box {
             if (!b.overlaps(lastBbox)) {
                 aCCbWidget::renderText(geom);
                 lastBbox = b;
-            } 
+            }
         }
 
         vector<double> yAxisDeltas = axisTics::getTicDelta(y0, y1);
         double yAxisDeltaMajor = yAxisDeltas[0];
         double yAxisDeltaMinor = yAxisDeltas[1];
 
-        vector<double> yAxisTicsMajor = axisTics::getTicVals(y0, y1, yAxisDeltaMajor);
-        vector<double> yAxisTicsMinor = axisTics::getTicVals(y0, y1, yAxisDeltaMinor);
+        const vector<axisTics::ticVal> yAxisTicsMajor = axisTics::getTicVals(y0, y1, yAxisDeltaMajor);
+        const vector<axisTics::ticVal> yAxisTicsMinor = axisTics::getTicVals(y0, y1, yAxisDeltaMinor);
 
         // === draw y axis minor tics ===
-        for (double ticY : yAxisTicsMinor)  // draw minor tics before data
-            aCCbWidget::line(p.projX(x0), p.projY(ticY), p.projX(x0) + minorTicLength, p.projY(ticY));
+        for (const axisTics::ticVal& ticY : yAxisTicsMinor)  // draw minor tics before data
+            aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x0) + minorTicLength, p.projY(ticY.val));
 
         // === draw x axis major tics and numbers ===
         vector<string> yAxisTicsMajorStr = axisTics::formatTicVals(yAxisTicsMajor, yAxisDeltaMajor);
         lastBbox = aCCb::vectorFont::bbox();
         for (size_t ix = 0; ix < yAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
-            double ticY = yAxisTicsMajor[ix];
+            const axisTics::ticVal& ticY = yAxisTicsMajor[ix];
 
             fl_color(FL_DARK_GREEN);
-            aCCbWidget::line(p.projX(x0), p.projY(ticY), p.projX(x1), p.projY(ticY));
+            aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x1), p.projY(ticY.val));
             fl_color(FL_GREEN);
 
-            aCCbWidget::line(p.projX(x0), p.projY(ticY), p.projX(x0) + majorTicLength, p.projY(ticY));
+            aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x0) + majorTicLength, p.projY(ticY.val));
 
             // === tic label ===
             string ticStr = yAxisTicsMajorStr[ix];
@@ -482,7 +493,7 @@ class plot2d : public Fl_Box {
             geom = aCCb::vectorFont::centerY(geom);
 
             int originX = p.projX(x0);
-            int originY = p.projY(ticY);
+            int originY = p.projY(ticY.val);
             geom = aCCb::vectorFont::project(geom, fontsize, originX, originY);
 
             // === tic label text ===
@@ -495,7 +506,7 @@ class plot2d : public Fl_Box {
             if (!b.overlaps(lastBbox)) {
                 aCCbWidget::renderText(geom);
                 lastBbox = b;
-            } 
+            }
         }
         fl_pop_clip();
     }
@@ -691,6 +702,9 @@ class plot2d : public Fl_Box {
         bool highlightValid = false;
         vector<string> annot;
     } cursorHighlight;
+
+    //* if autoscaling, add this margin on each side so the outermost point doesn't fall onto the border */
+    const double autoscaleMarginOneSided = 0.03;
 
     //* if false, use cached bitmap. Otherwise redraw from data. */
     bool needFullRedraw = true;
