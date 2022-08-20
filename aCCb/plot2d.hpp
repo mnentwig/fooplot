@@ -244,10 +244,30 @@ class plot2d : public Fl_Box {
 
     //* sets the visible area, triggers redraw */
     void setViewArea(double x0, double y0, double x1, double y1, bool resetAxes) {
-        this->x0 = x0;
-        this->y0 = y0;
-        this->x1 = x1;
-        this->y1 = y1;
+        // better safe than sorry
+        double x0tmp = std::min(x0, x1);
+        double y0tmp = std::min(y0, y1);
+        double x1tmp = std::max(x0, x1);
+        double y1tmp = std::max(y0, y1);
+
+        // === enforce minimum span ===
+        // (approx. limit of float precision in 1920x1080 resolution)
+        const double minSpan = 5e-12;
+        if ((x1tmp - x0tmp) < minSpan) {
+            double avg = (x0tmp + x1tmp) / 2.0;
+            x0tmp = avg - minSpan / 2.0;
+            x1tmp = avg + minSpan / 2.0;
+        }
+        if ((y1tmp - y0tmp) < minSpan) {
+            double avg = (y0tmp + y1tmp) / 2.0;
+            y0tmp = avg - minSpan / 2.0;
+            y1tmp = avg + minSpan / 2.0;
+        }
+
+        this->x0 = x0tmp;
+        this->y0 = y0tmp;
+        this->x1 = x1tmp;
+        this->y1 = y1tmp;
         needFullRedraw = true;
         if (resetAxes) {
             // reset the state of currently drawn axis tic labels e.g. on zoom change (re-initialize overlap suppression)
@@ -419,7 +439,12 @@ class plot2d : public Fl_Box {
         // multiple of resolution step
         int64_t quant;
 
-        static void drawTicLabels(vector<ticLabel>& ticLabels, const vector<int64_t> lastDrawnQuant) {
+        static void drawTicLabels(vector<ticLabel>& ticLabels, vector<int64_t>& lastDrawnQuant) {
+            // copy previously drawn quantization tics
+            const vector<int64_t> lastDrawnQuantPrev(lastDrawnQuant);
+            // reset list to be updated
+            lastDrawnQuant.clear();
+
             // order ticLabels, most important ones first
             std::sort(
                 ticLabels.begin(), ticLabels.end(),
@@ -443,7 +468,7 @@ class plot2d : public Fl_Box {
 
                         ixDrawOuter = ixDraw + 1;  // update first undrawn element for outer loop
 
-                        bool ticWasDrawnTheLastTime = std::find(lastDrawnQuant.begin(), lastDrawnQuant.end(), tl.quant) != lastDrawnQuant.end();
+                        bool ticWasDrawnTheLastTime = std::find(lastDrawnQuantPrev.begin(), lastDrawnQuantPrev.end(), tl.quant) != lastDrawnQuantPrev.end();
                         // first pass: Try tics that were drawn the last time
                         if ((pass == 0) && !ticWasDrawnTheLastTime) continue;
                         // second pass: Try tics that were not drawn the last time
@@ -460,6 +485,7 @@ class plot2d : public Fl_Box {
                         if (!collision) {
                             bboxesDrawn.push_back(&tl.bbox);  // add this label to collision check
                             aCCbWidget::renderText(tl.geom);  // draw
+                            lastDrawnQuant.push_back(tl.quant);
                         }
 
                     }  // for ixDraw
@@ -482,7 +508,6 @@ class plot2d : public Fl_Box {
 
         const vector<axisTics::ticVal> xAxisTicsMajor = axisTics::getTicVals(x0, x1, xAxisDeltaMajor);
         const vector<axisTics::ticVal> xAxisTicsMinor = axisTics::getTicVals(x0, x1, xAxisDeltaMinor);
-
         // === draw axes ===
         aCCbWidget::line(
             p.projX(x0), p.projY(y1),   // top left
