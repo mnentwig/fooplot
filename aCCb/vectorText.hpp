@@ -1444,13 +1444,13 @@ class bbox {
         y1 += dy / 2;
     }
 
-    float getX0() { return x0; }
-    float getY0() { return y0; }
-    float getX1() { return x1; }
-    float getY1() { return y1; }
-    float getWidth() { return x1 - x0; }
-    float getHeight() { return y1 - y0; }
-    bool overlaps(const bbox& arg) {
+    float getX0() const { return x0; }
+    float getY0() const { return y0; }
+    float getX1() const { return x1; }
+    float getY1() const { return y1; }
+    float getWidth() const { return x1 - x0; }
+    float getHeight() const { return y1 - y0; }
+    bool overlaps(const bbox& arg) const {
         if (arg.x1 < x0) return false;
         if (arg.x0 >= x1) return false;
         if (arg.y1 < y0) return false;

@@ -2,6 +2,7 @@
 #include <FL/Fl_Box.H>
 #include <FL/fl_draw.H>
 
+#include <algorithm>  // sort
 #include <array>
 #include <cassert>
 #include <chrono>
@@ -138,7 +139,7 @@ class plot2d : public Fl_Box {
             }
             if (mouseState.getDeltaOff(FL_BUTTON3))
                 if ((std::fabs(mouseDown3DataX - dataX) > 1e-18) || (std::fabs(mouseDown3DataY - dataY) > 1e-18))
-                    parent->setViewArea(/*x0*/ std::min(mouseDown3DataX, dataX), /*y0*/ std::min(mouseDown3DataY, dataY), /*x1*/ std::max(mouseDown3DataX, dataX), /*y1*/ std::max(mouseDown3DataY, dataY));
+                    parent->setViewArea(/*x0*/ std::min(mouseDown3DataX, dataX), /*y0*/ std::min(mouseDown3DataY, dataY), /*x1*/ std::max(mouseDown3DataX, dataX), /*y1*/ std::max(mouseDown3DataY, dataY), /*resetAxes*/ true);
 
             if (mouseState.getMouseMove()) {
                 parent->notifyCursorMove(dataX, dataY);
@@ -155,7 +156,7 @@ class plot2d : public Fl_Box {
                     dataY -= dy;
                     mouseDown1DataX = dataX;
                     mouseDown1DataY = dataY;
-                    parent->setViewArea(x0, y0, x1, y1);
+                    parent->setViewArea(x0, y0, x1, y1, /*resetAxes*/ false);
                 }
                 if (mouseState.getState(FL_BUTTON3)) {
                     drawRectx1 = dataX;
@@ -191,7 +192,7 @@ class plot2d : public Fl_Box {
                     y0 = deltaY0 + dataY;
                     y1 = deltaY1 + dataY;
                 }
-                parent->setViewArea(x0, y0, x1, y1);
+                parent->setViewArea(x0, y0, x1, y1, /*resetAxes*/ true);
             }
             return 1;
         }
@@ -242,12 +243,17 @@ class plot2d : public Fl_Box {
     }
 
     //* sets the visible area, triggers redraw */
-    void setViewArea(double x0, double y0, double x1, double y1) {
+    void setViewArea(double x0, double y0, double x1, double y1, bool resetAxes) {
         this->x0 = x0;
         this->y0 = y0;
         this->x1 = x1;
         this->y1 = y1;
         needFullRedraw = true;
+        if (resetAxes) {
+            // reset the state of currently drawn axis tic labels e.g. on zoom change (re-initialize overlap suppression)
+            drawnAxisTicQuantX.clear();
+            drawnAxisTicQuantY.clear();
+        }
         redraw();
     }
     void cursorRedraw() {
@@ -388,12 +394,6 @@ class plot2d : public Fl_Box {
                 redraw();  // redraw on change (reuse bitmap)
     }
 
-    /** visible area */
-    double x0 = -1;
-    double x1 = 2;
-    double y0 = 1.23;
-    double y1 = 1.24;
-
     void invalidate(bool needFullRedraw) {
         this->needFullRedraw = needFullRedraw;
         redraw();
@@ -405,11 +405,77 @@ class plot2d : public Fl_Box {
     }
 
    protected:
+    // helper class: drawing instructions for a tic label. Purpose is to consistently suppress drawing of less-important labels in case of overlap.
+    class ticLabel {
+       public:
+        ticLabel(vector<array<float, 4>>& geom, aCCb::vectorFont::bbox bbox, size_t decimationLevel, int64_t quant) : geom(geom), bbox(bbox), decimationLevel(decimationLevel), quant(quant) {}
+
+        // text to draw
+        vector<array<float, 4>> geom;
+        // bounding box of drawn text
+        aCCb::vectorFont::bbox bbox;
+        // importance (drawing order) - the higher, the more important
+        size_t decimationLevel;
+        // multiple of resolution step
+        int64_t quant;
+
+        static void drawTicLabels(vector<ticLabel>& ticLabels, const vector<int64_t> lastDrawnQuant) {
+            // order ticLabels, most important ones first
+            std::sort(
+                ticLabels.begin(), ticLabels.end(),
+                [](ticLabel& a, ticLabel& b) -> bool { return a.decimationLevel >= b.decimationLevel; });
+
+            vector<const aCCb::vectorFont::bbox*> bboxesDrawn;
+
+            // === loop over blocks with a common decimation level ===
+            size_t ixDrawOuter = 0;
+            while (ixDrawOuter < ticLabels.size()) {
+                size_t currentDecimationLevel = ticLabels[ixDrawOuter].decimationLevel;
+
+                size_t ixStart = ixDrawOuter;
+                for (size_t pass = 0; pass <= 1; ++pass) {
+                    for (size_t ixDraw = ixStart; ixDraw < ticLabels.size(); ++ixDraw) {
+                        const ticLabel& tl = ticLabels[ixDraw];
+
+                        // === check change in decimation level ===
+                        if (tl.decimationLevel != currentDecimationLevel)
+                            break;
+
+                        ixDrawOuter = ixDraw + 1;  // update first undrawn element for outer loop
+
+                        bool ticWasDrawnTheLastTime = std::find(lastDrawnQuant.begin(), lastDrawnQuant.end(), tl.quant) != lastDrawnQuant.end();
+                        // first pass: Try tics that were drawn the last time
+                        if ((pass == 0) && !ticWasDrawnTheLastTime) continue;
+                        // second pass: Try tics that were not drawn the last time
+                        if ((pass == 1) && ticWasDrawnTheLastTime) continue;
+
+                        // === check for collision with anything drawn before on this axis ===
+                        bool collision = false;
+                        for (const aCCb::vectorFont::bbox* drawnBbox : bboxesDrawn) {
+                            if (drawnBbox->overlaps(tl.bbox)) {
+                                collision = true;
+                                break;
+                            }
+                        }
+                        if (!collision) {
+                            bboxesDrawn.push_back(&tl.bbox);  // add this label to collision check
+                            aCCbWidget::renderText(tl.geom);  // draw
+                        }
+
+                    }  // for ixDraw
+                }      // for pass
+            }
+        }  // drawTicLabels
+    };     // class ticLabel
+
     // draws title, labels, axes
     void drawPlotDecorations(const proj<double>& p) {
+        fl_push_clip(x(), y(), w(), h());  // clip to widget area
+
         drawTitle(p);
         drawXlabel(p);
         drawYlabel(p);
+
         vector<double> xAxisDeltas = axisTics::getTicDelta(x0, x1);
         double xAxisDeltaMajor = xAxisDeltas[0];
         double xAxisDeltaMinor = xAxisDeltas[1];
@@ -418,7 +484,6 @@ class plot2d : public Fl_Box {
         const vector<axisTics::ticVal> xAxisTicsMinor = axisTics::getTicVals(x0, x1, xAxisDeltaMinor);
 
         // === draw axes ===
-        fl_push_clip(x(), y(), w(), h());
         aCCbWidget::line(
             p.projX(x0), p.projY(y1),   // top left
             p.projX(x0), p.projY(y0),   // bottom left
@@ -429,8 +494,8 @@ class plot2d : public Fl_Box {
             aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y0) - minorTicLength);
 
         // === draw x axis major tics and numbers ===
+        vector<ticLabel> ticLabelsX;
         vector<string> xAxisTicsMajorStr = axisTics::formatTicVals(xAxisTicsMajor, xAxisDeltaMajor);
-        aCCb::vectorFont::bbox lastBbox;                         // note: default constructed bbox never overlaps
         for (size_t ix = 0; ix < xAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             const axisTics::ticVal& ticX = xAxisTicsMajor[ix];
 
@@ -456,12 +521,11 @@ class plot2d : public Fl_Box {
             // enforce some "space" between tic labels
             b.extend(/*dx*/ fontsize, /*dy*/ 0);
 
-            // draw only if no collision with the last one
-            if (!b.overlaps(lastBbox)) {
-                aCCbWidget::renderText(geom);
-                lastBbox = b;
-            }
+            ticLabelsX.emplace_back(geom, b, ticX.decimationLevel, ticX.quant);
         }
+
+        // === draw xlabels ===
+        ticLabel::drawTicLabels(ticLabelsX, drawnAxisTicQuantX);
 
         vector<double> yAxisDeltas = axisTics::getTicDelta(y0, y1);
         double yAxisDeltaMajor = yAxisDeltas[0];
@@ -476,14 +540,16 @@ class plot2d : public Fl_Box {
 
         // === draw x axis major tics and numbers ===
         vector<string> yAxisTicsMajorStr = axisTics::formatTicVals(yAxisTicsMajor, yAxisDeltaMajor);
-        lastBbox = aCCb::vectorFont::bbox();
+        vector<ticLabel> ticLabelsY;
         for (size_t ix = 0; ix < yAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             const axisTics::ticVal& ticY = yAxisTicsMajor[ix];
 
+            // === long line across the plot ===
             fl_color(FL_DARK_GREEN);
             aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x1), p.projY(ticY.val));
-            fl_color(FL_GREEN);
 
+            // === short tic line ===
+            fl_color(FL_GREEN);
             aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x0) + majorTicLength, p.projY(ticY.val));
 
             // === tic label ===
@@ -502,12 +568,12 @@ class plot2d : public Fl_Box {
             // enforce some "space" between tic labels
             b.extend(/*dx*/ 0, /*dy*/ fontsize);
 
-            // draw only if no collision with the last one
-            if (!b.overlaps(lastBbox)) {
-                aCCbWidget::renderText(geom);
-                lastBbox = b;
-            }
+            ticLabelsY.emplace_back(geom, b, ticY.decimationLevel, ticY.quant);
         }
+
+        // === draw ylabels ===
+        ticLabel::drawTicLabels(ticLabelsY, drawnAxisTicQuantY);
+
         fl_pop_clip();
     }
 
@@ -649,19 +715,18 @@ class plot2d : public Fl_Box {
         cursorHighlight.notifyCursorChange(dataX, dataY, allDrawJobs);
     }
 
-    allDrawJobs_cl& allDrawJobs;
-    annotator_t annotator;
-
    public:
+    /** visible area */
+    double x0 = -1;
+    double x1 = 2;
+    double y0 = 1.23;
+    double y1 = 1.24;
+
     float fontsize = 14;
     float titleFontsize = 18;
     float axisLabelFontsize = fontsize;
 
    protected:
-    const int minorTicLength = 3;
-    const int majorTicLength = 7;
-    bool cursorFlag = false;
-
     class cursorHighlight_t {
        public:
         // set new point to highlight. Returns true if changed (redraw required)
@@ -703,6 +768,13 @@ class plot2d : public Fl_Box {
         vector<string> annot;
     } cursorHighlight;
 
+    allDrawJobs_cl& allDrawJobs;
+    annotator_t annotator;
+
+    const int minorTicLength = 3;
+    const int majorTicLength = 7;
+    bool cursorFlag = false;
+
     //* if autoscaling, add this margin on each side so the outermost point doesn't fall onto the border */
     const double autoscaleMarginOneSided = 0.03;
 
@@ -715,5 +787,11 @@ class plot2d : public Fl_Box {
     string xlabel = "";
     //* y axis label displayed on the left */
     string ylabel = "";
+
+    // grid-quantized values of last drawn x axis tic labels
+    vector<int64_t> drawnAxisTicQuantX;
+
+    // grid-quantized values of last drawn y axis tic labels
+    vector<int64_t> drawnAxisTicQuantY;
 };
 }  // namespace aCCb

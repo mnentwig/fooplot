@@ -11,25 +11,27 @@ class axisTics {
     // represents an axis tic value, facing the problem there may not be enough space to print them all
     struct ticVal {
        public:
-        ticVal(double val, int64_t quant) : val(val) {
-            if (quant == 0) {
+        ticVal(double val, int64_t quantArg) : val(val), quant(quantArg) {
+            if (quantArg == 0) {
                 decimationLevel = std::numeric_limits<size_t>::max();
                 return;
             }
             decimationLevel = 0;
-            while (quant % 10 == 0) {
+            while (quantArg % 10 == 0) {
                 decimationLevel += 3;
-                quant /= 10;
+                quantArg /= 10;
             }
-            if (quant % 5 == 0) {
+            if (quantArg % 5 == 0) {
                 decimationLevel += 2;
                 return;  // rules out 2 as 10=5*2
             }
-            if (quant % 2 == 0)
+            if (quantArg % 2 == 0)
                 decimationLevel += 1;
         }
         // value of an axis tic, to be printed if there is space
         double val;
+        // multiple of axis tic resolution grid
+        uint64_t quant;
         // the higher the decimation level, the more fundamental.
         size_t decimationLevel;
     };
