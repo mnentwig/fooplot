@@ -516,7 +516,8 @@ class plot2d : public Fl_Box {
 
         // === draw x axis minor tics ===
         for (const axisTics::ticVal& ticX : xAxisTicsMinor)  // draw minor tics before data
-            aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y0) - minorTicLength);
+            if (ticX.inRange)
+                aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y0) - minorTicLength);
 
         // === draw x axis major tics and numbers ===
         vector<ticLabel> ticLabelsX;
@@ -525,12 +526,14 @@ class plot2d : public Fl_Box {
             const axisTics::ticVal& ticX = xAxisTicsMajor[ix];
 
             // === long line across the plot ===
-            fl_color(FL_DARK_GREEN);
-            aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y1));
+            if (ticX.inRange) {
+                fl_color(FL_DARK_GREEN);
+                aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y1));
 
-            // === short tic line ===
-            fl_color(FL_GREEN);
-            aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y0) - majorTicLength);
+                // === short tic line ===
+                fl_color(FL_GREEN);
+                aCCbWidget::line(p.projX(ticX.val), p.projY(y0), p.projX(ticX.val), p.projY(y0) - majorTicLength);
+            }
 
             // === tic label ===
             string ticStr = xAxisTicsMajorStr[ix];
@@ -561,7 +564,8 @@ class plot2d : public Fl_Box {
 
         // === draw y axis minor tics ===
         for (const axisTics::ticVal& ticY : yAxisTicsMinor)  // draw minor tics before data
-            aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x0) + minorTicLength, p.projY(ticY.val));
+            if (ticY.inRange)
+                aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x0) + minorTicLength, p.projY(ticY.val));
 
         // === draw x axis major tics and numbers ===
         vector<string> yAxisTicsMajorStr = axisTics::formatTicVals(yAxisTicsMajor, yAxisDeltaMajor);
@@ -569,13 +573,15 @@ class plot2d : public Fl_Box {
         for (size_t ix = 0; ix < yAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             const axisTics::ticVal& ticY = yAxisTicsMajor[ix];
 
-            // === long line across the plot ===
-            fl_color(FL_DARK_GREEN);
-            aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x1), p.projY(ticY.val));
+            if (ticY.inRange) {
+                // === long line across the plot ===
+                fl_color(FL_DARK_GREEN);
+                aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x1), p.projY(ticY.val));
 
-            // === short tic line ===
-            fl_color(FL_GREEN);
-            aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x0) + majorTicLength, p.projY(ticY.val));
+                // === short tic line ===
+                fl_color(FL_GREEN);
+                aCCbWidget::line(p.projX(x0), p.projY(ticY.val), p.projX(x0) + majorTicLength, p.projY(ticY.val));
+            }
 
             // === tic label ===
             string ticStr = yAxisTicsMajorStr[ix];
