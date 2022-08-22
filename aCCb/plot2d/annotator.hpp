@@ -1,4 +1,6 @@
 #pragma once
+//#include <unistd.h>  // usleep
+
 #include <condition_variable>
 #include <future>
 #include <iostream>
@@ -7,7 +9,7 @@
 #include "drawJob.hpp"
 class annotator_t {
    public:
-    annotator_t(allDrawJobs_cl& dj) : dj(dj) {
+    annotator_t(allDrawJobs_cl& dj, void (*cb)(void* data), void* data) : dj(dj), callbackFun(cb), userdata(data) {
         bgTask = std::async(backgroundProcessWrapper, this);
     }
 
@@ -73,26 +75,35 @@ class annotator_t {
                 if (stateCopy.trigger == stateCopy.lastTrigger) {
                     break;
                 }
+
+                // Debug: simulate long lookup. 
+                // Note: The perceived delay will be twice this amount, as the first trigger happens when the mouse moves a single pixel, 
+                // usually returning the original point and showing no change.
+                // usleep(1e6); // needs <unistd.h>
                 stateCopy.resultIsValid = dj.findClosestPoint((float)stateCopy.cursorDataX, (float)stateCopy.cursorDataY, p, /*out*/ stateCopy.ixTrace, /*out*/ stateCopy.ixPt);
 
-                std::unique_lock<std::mutex> lock(mtx);  // lock to closing bracket
-                mtState.resultIsValid = stateCopy.resultIsValid;
-                mtState.ixTrace = stateCopy.ixTrace;
-                mtState.ixPt = stateCopy.ixPt;
-                mtState.lastTrigger = stateCopy.trigger;  // this is the trigger state that initiated processing
+                {                                            // lock
+                    std::unique_lock<std::mutex> lock(mtx);  // lock to closing bracket
+                    mtState.resultIsValid = stateCopy.resultIsValid;
+                    mtState.ixTrace = stateCopy.ixTrace;
+                    mtState.ixPt = stateCopy.ixPt;
+                    mtState.lastTrigger = stateCopy.trigger;  // this is the trigger state that initiated processing
 
-            }  // while working
+                    // invoke callback
+                    if (callbackFun != NULL)
+                        callbackFun(userdata);
+                }  // lock
+            }      // while working
 
             // === wait for notification ===
             {
                 std::unique_lock<std::mutex> lock(mtx);  // lock to closing bracket
                 cv.wait(lock);
             }
-            std::unique_lock<std::mutex> lock(mtx);  // lock to closing bracket
-
         }  // while keepRunning
     }
 
+    // starts background process (wrapper object method call via std::async)
     static void
     backgroundProcessWrapper(annotator_t* this_) {
         this_->backgroundProcess();
@@ -104,4 +115,8 @@ class annotator_t {
     std::condition_variable cv;
     std::future<void> bgTask;
     bool isShutdown = false;
+    // function to call when point under cursor has been identified
+    void (*callbackFun)(void* userdata);
+    // payload for callbackFun
+    void* userdata;
 };

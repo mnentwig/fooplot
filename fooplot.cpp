@@ -144,7 +144,6 @@ class myTestWin {
     }
 
     void cb_timer() {
-        tb->cb_timer();
         if (syncfile.isModified())
             cb_close();  // all windows are hidden => Fl::run() returns
         else
@@ -366,6 +365,8 @@ int main2(int argc, const char **argv) {
 
 // Ctrl-C callback
 void sigIntHandler(int /*signal*/) {
+    // TODO 
+    // "The safe and portable approach is never to call show() or hide() on any widget from the context of a worker thread. Instead you can use the Fl_Awake_Handler variant of Fl::awake() to request the main() thread to create, destroy, show or hide the widget on behalf of the worker thread"
     std::cout << "sig INT detected, shutting down" << endl;
     if (windowForSigIntHandler)
         windowForSigIntHandler->cb_close();  // same as regular close

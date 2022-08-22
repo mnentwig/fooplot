@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "aCCb/cmdLineParsing.hpp"
-#include "aCCb/stringToNum.hpp"
+#include "../aCCb/cmdLineParsing.hpp"
+#include "../aCCb/stringToNum.hpp"
 using std::vector, std::string, std::runtime_error;
 
 struct annot2args {

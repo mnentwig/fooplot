@@ -318,7 +318,7 @@ class plot2d : public Fl_Box {
 
    public:
     plot2d(int x, int y, int w, int h, allDrawJobs_cl& adr)
-        : Fl_Box(x, y, w, h), evtMan(this), allDrawJobs(adr), annotator(adr) {}
+        : Fl_Box(x, y, w, h), evtMan(this), allDrawJobs(adr), annotator(adr, annotatorCallbackCurPtIdentified_wrapper, (void*)this) {}
     ~plot2d() {}
     void shutdown() {
         annotator.shutdown();
@@ -403,15 +403,6 @@ class plot2d : public Fl_Box {
         if (!validY)
             if (scaleY0 or scaleY1) return false;  // unable to scale Y
         return true;
-    }
-
-    // get regular callbacks for non-blocking background work
-    void cb_timer() {
-        size_t ixTr;
-        size_t ixPt;
-        if (annotator.getHighlightedPoint(ixTr, ixPt))
-            if (this->cursorHighlight.setHighlight(ixTr, ixPt))
-                redraw();  // redraw on change (reuse bitmap)
     }
 
     void invalidate(bool needFullRedraw) {
@@ -508,11 +499,6 @@ class plot2d : public Fl_Box {
 
         const vector<axisTics::ticVal> xAxisTicsMajor = axisTics::getTicVals(x0, x1, xAxisDeltaMajor);
         const vector<axisTics::ticVal> xAxisTicsMinor = axisTics::getTicVals(x0, x1, xAxisDeltaMinor);
-        // === draw axes ===
-        aCCbWidget::line(
-            p.projX(x0), p.projY(y1),   // top left
-            p.projX(x0), p.projY(y0),   // bottom left
-            p.projX(x1), p.projY(y0));  // bottom right
 
         // === draw x axis minor tics ===
         for (const axisTics::ticVal& ticX : xAxisTicsMinor)  // draw minor tics before data
@@ -604,6 +590,13 @@ class plot2d : public Fl_Box {
 
         // === draw ylabels ===
         ticLabel::drawTicLabels(ticLabelsY, drawnAxisTicQuantY);
+
+        // === draw axes ===
+        // (drawn last, e.g. on top of tic lines)
+        aCCbWidget::line(
+            p.projX(x0), p.projY(y1),   // top left
+            p.projX(x0), p.projY(y0),   // bottom left
+            p.projX(x1), p.projY(y0));  // bottom right
 
         fl_pop_clip();
     }
@@ -744,6 +737,8 @@ class plot2d : public Fl_Box {
         proj<float> p = projDataToScreen<float>();
         annotator.notifyCursorChange(dataX, dataY, p);
         cursorHighlight.notifyCursorChange(dataX, dataY, allDrawJobs);
+        // first redraw: Cursor changed, annotation (probably) still pending
+        redraw();
     }
 
    public:
@@ -758,25 +753,48 @@ class plot2d : public Fl_Box {
     float axisLabelFontsize = fontsize;
 
    protected:
+    // annotator calls this when point under cursor was identified
+    // called from worker thread (may not take FLTK actions)
+    static void annotatorCallbackCurPtIdentified_wrapper(void* userdata) {
+        Fl::awake(annotatorCallbackCurPtIdentified_wrapper2, userdata);
+    }
+
+    // annotator calls this when point under cursor was identified
+    // called (some time later) from FLTK main thread. FLTK actions are allowed.
+    static void annotatorCallbackCurPtIdentified_wrapper2(void* userdata) {
+        plot2d* _this = (plot2d*)userdata;
+        assert(_this);
+        _this->annotatorCallbackCurPtIdentified();
+    }
+
+    // annotator calls this when point under cursor was identified
+    // unwrapped to object method
+    void annotatorCallbackCurPtIdentified() {
+        size_t ixTr;
+        size_t ixPt;
+        if (annotator.getHighlightedPoint(ixTr, ixPt))
+            if (this->cursorHighlight.setHighlight(ixTr, ixPt, allDrawJobs))
+                redraw();  // 2nd redraw on highlight change (reuse bitmap)
+    }
+
     class cursorHighlight_t {
        public:
         // set new point to highlight. Returns true if changed (redraw required)
-        bool setHighlight(size_t highlightIxTrace, size_t highlightIxPt) {
+        bool setHighlight(size_t highlightIxTrace, size_t highlightIxPt, allDrawJobs_cl& adj) {
             bool r = (this->highlightIxTrace != highlightIxTrace) || (this->highlightIxPt |= highlightIxPt);
             this->highlightIxTrace = highlightIxTrace;
             this->highlightIxPt = highlightIxPt;
             this->highlightValid = true;
+            if (r)
+                updateAnnotations(adj);
             return r;
         }
 
-        void notifyCursorChange(double cursorX, double cursorY, allDrawJobs_cl& adj) {
-            this->cursorX = cursorX;
-            this->cursorY = cursorY;
-
+        void updateAnnotations(allDrawJobs_cl& adj) {
             annot.clear();
             std::stringstream ss;
             ss << "cur: [" << cursorX << ", " << cursorY << "]";
-            annot.push_back(ss.str().c_str());
+            annot.push_back(ss.str());
 
             if (highlightValid) {
                 float x, y;
@@ -789,6 +807,12 @@ class plot2d : public Fl_Box {
                 for (const string& oneAnnot : allAnnot)
                     annot.push_back(oneAnnot);
             }
+        }
+
+        void notifyCursorChange(double cursorX, double cursorY, allDrawJobs_cl& adj) {
+            this->cursorX = cursorX;
+            this->cursorY = cursorY;
+            updateAnnotations(adj);
         }
 
         double cursorX = std::numeric_limits<double>::quiet_NaN();
