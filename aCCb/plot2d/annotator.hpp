@@ -9,7 +9,7 @@
 #include "drawJob.hpp"
 class annotator_t {
    public:
-    annotator_t(allDrawJobs_cl& dj, void (*cb)(void* data), void* data) : dj(dj), callbackFun(cb), userdata(data) {
+    annotator_t(allDrawJobs_cl& adj, void (*cb)(void* data), void* data) : adj(adj), callbackFun(cb), userdata(data) {
         bgTask = std::async(backgroundProcessWrapper, this);
     }
 
@@ -50,17 +50,28 @@ class annotator_t {
     }
 
    protected:
+    // data structure for communicating with the point lookup worker thread
     struct mtState_t {
+        // trigger != lastTrigger indicates new work.
+        // trigger == lastTrigger signals completion.
         int trigger = 0;
         int lastTrigger = 0;
+        // input: cursor position
         float cursorDataX = std::numeric_limits<float>::infinity();
+        // input: cursor position
         float cursorDataY = std::numeric_limits<float>::infinity();
+        // flag to shut down worker thread
         int keepRunning = 1;
+        // flags a valid result (trigger/lastTrigger tells whether it is in sync with the last request)
         bool resultIsValid = false;
+        // output: index of trace nearest cursor
         size_t ixTrace = std::numeric_limits<size_t>::max();
+        // output: index of point on trace nearest cursor
         size_t ixPt = std::numeric_limits<size_t>::max();
-    } mtState;
+    } mtState;  // protect access to this instance via unique_lock(mtx)
 
+    // worker thread function for point-under-cursor lookup.
+    // Triggers on cv, communication via mtState
     void backgroundProcess() {
         while (true) {
             while (true) {
@@ -76,24 +87,26 @@ class annotator_t {
                     break;
                 }
 
-                // Debug: simulate long lookup. 
-                // Note: The perceived delay will be twice this amount, as the first trigger happens when the mouse moves a single pixel, 
+                // Debug: simulate long lookup.
+                // Note: The perceived delay will be twice this amount, as the first trigger happens when the mouse moves a single pixel,
                 // usually returning the original point and showing no change.
                 // usleep(1e6); // needs <unistd.h>
-                stateCopy.resultIsValid = dj.findClosestPoint((float)stateCopy.cursorDataX, (float)stateCopy.cursorDataY, p, /*out*/ stateCopy.ixTrace, /*out*/ stateCopy.ixPt);
+                stateCopy.resultIsValid = adj.findClosestPoint((float)stateCopy.cursorDataX, (float)stateCopy.cursorDataY, p, /*out*/ stateCopy.ixTrace, /*out*/ stateCopy.ixPt);
 
-                {                                            // lock
-                    std::unique_lock<std::mutex> lock(mtx);  // lock to closing bracket
+                {  // lock
+                    std::unique_lock<std::mutex> lock(mtx);
                     mtState.resultIsValid = stateCopy.resultIsValid;
                     mtState.ixTrace = stateCopy.ixTrace;
                     mtState.ixPt = stateCopy.ixPt;
                     mtState.lastTrigger = stateCopy.trigger;  // this is the trigger state that initiated processing
+                }                                             // lock
 
-                    // invoke callback
-                    if (callbackFun != NULL)
-                        callbackFun(userdata);
-                }  // lock
-            }      // while working
+                // invoke callback
+                // Note: no lock here on mtState (it is not passed to the callback).
+                // Results are instead retrieved via getHighlightedPoint(), which has its own lock.
+                if (callbackFun != NULL)
+                    callbackFun(userdata);
+            }  // while working
 
             // === wait for notification ===
             {
@@ -109,7 +122,7 @@ class annotator_t {
         this_->backgroundProcess();
     }
 
-    allDrawJobs_cl& dj;
+    const allDrawJobs_cl& adj;
     proj<float> p;
     std::mutex mtx;
     std::condition_variable cv;
