@@ -86,7 +86,7 @@ vector<string> testcase9() {
     vector<string> annotWE;
     vector<uint32_t> annotIndir;
     vector<string> annotIndirText{"Point lies in the northwest quadrant", "located northeast", "point in southwest quadrant", "this point is southeast"};
-    for (double phi = 0; phi < 2.0 * M_PI; phi += 1e-4) {
+    for (double phi = 0; phi < 2.0 * 3.14159265; phi += 1e-4) {
         x.push_back(std::cos(phi));
         y.push_back(std::sin(phi));
         uint16_t maskVal = x.back() < 0 ? 0 : 1;
