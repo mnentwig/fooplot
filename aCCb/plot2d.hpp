@@ -295,25 +295,25 @@ class plot2d : public Fl_Box {
     }
 
     void drawTitle(const proj<double>& p) const {
-        vector<array<float, 4>> geom = aCCb::vectorFont::renderText(title);
-        geom = aCCb::vectorFont::centerX(geom);
-        aCCb::vectorFont::bbox b(geom);
-        aCCbWidget::renderText(geom, titleFontsize, p.getScreenXCenter() - b.getWidth(), p.getScreenY1() - titleFontsize);
+        aCCb::vectorFont::vectorText t(title);
+        t.centerX();
+        aCCb::vectorFont::vectorText::bbox b = t.getBbox();
+        aCCbWidget::renderText(t, titleFontsize, p.getScreenXCenter() - b.getWidth(), p.getScreenY1() - titleFontsize);
     }
 
     void drawXlabel(const proj<double>& p) const {
-        vector<array<float, 4>> geom = aCCb::vectorFont::renderText(xlabel);
-        geom = aCCb::vectorFont::centerX(geom);
-        aCCb::vectorFont::bbox b(geom);
-        aCCbWidget::renderText(geom, axisLabelFontsize, p.getScreenXCenter() - b.getWidth(), p.getScreenY0() + fontsize);
+        aCCb::vectorFont::vectorText t(xlabel);
+        t.centerX();
+        aCCb::vectorFont::vectorText::bbox b = t.getBbox();
+        aCCbWidget::renderText(t, axisLabelFontsize, p.getScreenXCenter() - b.getWidth(), p.getScreenY0() + fontsize);
     }
 
     void drawYlabel(const proj<double>& p) const {
-        vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ylabel);
-        aCCb::vectorFont::rotate270(geom);
-        geom = aCCb::vectorFont::centerY(geom);
-        aCCb::vectorFont::bbox b(geom);
-        aCCbWidget::renderText(geom, axisLabelFontsize, p.getScreenX0() - fontsize, p.getScreenYCenter() - b.getHeight());
+        aCCb::vectorFont::vectorText t(xlabel);
+        t.rotate270();
+        t.centerY();
+        aCCb::vectorFont::vectorText::bbox b = t.getBbox();
+        aCCbWidget::renderText(t, axisLabelFontsize, p.getScreenX0() - fontsize, p.getScreenYCenter() - b.getHeight());
     }
 
    public:
@@ -417,19 +417,19 @@ class plot2d : public Fl_Box {
 
    protected:
     // helper class: drawing instructions for a tic label. Purpose is to consistently suppress drawing of less-important labels in case of overlap.
+    // Note: given bbox may be extended over text's native bbox
     class ticLabel {
        public:
-        ticLabel(vector<array<float, 4>>& geom, aCCb::vectorFont::bbox bbox, size_t decimationLevel, int64_t quant) : geom(geom), bbox(bbox), decimationLevel(decimationLevel), quant(quant) {}
+        ticLabel(aCCb::vectorFont::vectorText& t, aCCb::vectorFont::vectorText::bbox& bbox, size_t decimationLevel, int64_t quant) : text(t), bbox(bbox), decimationLevel(decimationLevel), quant(quant) {}
 
         // text to draw
-        vector<array<float, 4>> geom;
-        // bounding box of drawn text
-        aCCb::vectorFont::bbox bbox;
+        aCCb::vectorFont::vectorText text;
+        // bounding box of9 text
+        aCCb::vectorFont::vectorText::bbox bbox;
         // importance (drawing order) - the higher, the more important
         size_t decimationLevel;
         // multiple of resolution step
         int64_t quant;
-
         static void drawTicLabels(vector<ticLabel>& ticLabels, vector<int64_t>& lastDrawnQuant) {
             // copy previously drawn quantization tics
             const vector<int64_t> lastDrawnQuantPrev(lastDrawnQuant);
@@ -441,7 +441,7 @@ class plot2d : public Fl_Box {
                 ticLabels.begin(), ticLabels.end(),
                 [](ticLabel& a, ticLabel& b) -> bool { return a.decimationLevel >= b.decimationLevel; });
 
-            vector<const aCCb::vectorFont::bbox*> bboxesDrawn;
+            vector<const aCCb::vectorFont::vectorText::bbox*> bboxesDrawn;
 
             // === loop over blocks with a common decimation level ===
             size_t ixDrawOuter = 0;
@@ -467,7 +467,7 @@ class plot2d : public Fl_Box {
 
                         // === check for collision with anything drawn before on this axis ===
                         bool collision = false;
-                        for (const aCCb::vectorFont::bbox* drawnBbox : bboxesDrawn) {
+                        for (const aCCb::vectorFont::vectorText::bbox* drawnBbox : bboxesDrawn) {
                             if (drawnBbox->overlaps(tl.bbox)) {
                                 collision = true;
                                 break;
@@ -475,7 +475,7 @@ class plot2d : public Fl_Box {
                         }
                         if (!collision) {
                             bboxesDrawn.push_back(&tl.bbox);  // add this label to collision check
-                            aCCbWidget::renderText(tl.geom);  // draw
+                            aCCbWidget::renderText(tl.text);  // draw
                             lastDrawnQuant.push_back(tl.quant);
                         }
 
@@ -523,19 +523,19 @@ class plot2d : public Fl_Box {
 
             // === tic label ===
             string ticStr = xAxisTicsMajorStr[ix];
-            vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ticStr.c_str());
-            geom = aCCb::vectorFont::centerX(geom);
+            aCCb::vectorFont::vectorText t(ticStr);
+            t.centerX();
             int originX = p.projX(ticX.val);
             int originY = p.projY(y0);
-            geom = aCCb::vectorFont::project(geom, fontsize, originX, originY);
+            t = t.project(fontsize, originX, originY);
 
             // === tic label text ===
             // get label text bounding box
-            aCCb::vectorFont::bbox b(geom);
+            aCCb::vectorFont::vectorText::bbox b = t.getBbox();
             // enforce some "space" between tic labels
             b.extend(/*dx*/ fontsize, /*dy*/ 0);
 
-            ticLabelsX.emplace_back(geom, b, ticX.decimationLevel, ticX.quant);
+            ticLabelsX.emplace_back(t, b, ticX.decimationLevel, ticX.quant);
         }
 
         // === draw xlabels ===
@@ -571,21 +571,21 @@ class plot2d : public Fl_Box {
 
             // === tic label ===
             string ticStr = yAxisTicsMajorStr[ix];
-            vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ticStr.c_str());
-            aCCb::vectorFont::rotate270(geom);
-            geom = aCCb::vectorFont::centerY(geom);
+            aCCb::vectorFont::vectorText t(ticStr);
+            t.rotate270();
+            t.centerY();
 
             int originX = p.projX(x0);
             int originY = p.projY(ticY.val);
-            geom = aCCb::vectorFont::project(geom, fontsize, originX, originY);
+            t = t.project(fontsize, originX, originY);
 
             // === tic label text ===
             // get label text bounding box
-            aCCb::vectorFont::bbox b(geom);
+            aCCb::vectorFont::vectorText::bbox b = t.getBbox();
             // enforce some "space" between tic labels
             b.extend(/*dx*/ 0, /*dy*/ fontsize);
 
-            ticLabelsY.emplace_back(geom, b, ticY.decimationLevel, ticY.quant);
+            ticLabelsY.emplace_back(t, b, ticY.decimationLevel, ticY.quant);
         }
 
         // === draw ylabels ===
@@ -717,16 +717,16 @@ class plot2d : public Fl_Box {
             int x = p.getScreenX0() + fontsize / 2;
             int y = p.getScreenY0() - cursorHighlight.annot.size() * fontsize - fontsize / 2;
             for (size_t ix = 0; ix < cursorHighlight.annot.size(); ++ix) {
-                vector<array<float, 4>> geom = aCCb::vectorFont::renderText(cursorHighlight.annot[ix].c_str());
+                aCCb::vectorFont::vectorText t = aCCb::vectorFont::vectorText(cursorHighlight.annot[ix].c_str());
                 // create bold black background
                 fl_color(FL_BLACK);
-                aCCbWidget::renderText(geom, fontsize, x - 1, y - 1);
-                aCCbWidget::renderText(geom, fontsize, x - 1, y + 1);
-                aCCbWidget::renderText(geom, fontsize, x + 1, y - 1);
-                aCCbWidget::renderText(geom, fontsize, x + 1, y + 1);
+                aCCbWidget::renderText(t, fontsize, x - 1, y - 1);
+                aCCbWidget::renderText(t, fontsize, x - 1, y + 1);
+                aCCbWidget::renderText(t, fontsize, x + 1, y - 1);
+                aCCbWidget::renderText(t, fontsize, x + 1, y + 1);
                 // draw text in green
                 fl_color(FL_GREEN);
-                aCCbWidget::renderText(geom, fontsize, x, y);
+                aCCbWidget::renderText(t, fontsize, x, y);
                 y += fontsize;
             }
         }

@@ -7,6 +7,7 @@
 #include <mutex>
 
 #include "drawJob.hpp"
+#include "allDrawJobs.hpp"
 class annotator_t {
    public:
     annotator_t(allDrawJobs_cl& adj, void (*cb)(void* data), void* data) : adj(adj), callbackFun(cb), userdata(data) {

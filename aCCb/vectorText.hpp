@@ -1,10 +1,11 @@
 #pragma once
 #include <array>
 #include <limits>
+#include <string>
 #include <vector>
 namespace aCCb {
 namespace vectorFont {
-
+using std::string;
 /*
 Source: Hershey font "rowmans.jhf"
 Converted with Hershey font converter v2.0 by Jari Komppa, http://iki.fi/sol/
@@ -1373,141 +1374,146 @@ const int rowmans_size[96] = {rowmans_1_size, rowmans_2_size, rowmans_3_size, ro
 // Pointers to glyph data
 const char* rowmans[96] = {&rowmans_1[0], &rowmans_2[0], &rowmans_3[0], &rowmans_4[0], &rowmans_5[0], &rowmans_6[0], &rowmans_7[0], &rowmans_8[0], &rowmans_9[0], &rowmans_10[0], &rowmans_11[0], &rowmans_12[0], &rowmans_13[0], &rowmans_14[0], &rowmans_15[0], &rowmans_16[0], &rowmans_17[0], &rowmans_18[0], &rowmans_19[0], &rowmans_20[0], &rowmans_21[0], &rowmans_22[0], &rowmans_23[0], &rowmans_24[0], &rowmans_25[0], &rowmans_26[0], &rowmans_27[0], &rowmans_28[0], &rowmans_29[0], &rowmans_30[0], &rowmans_31[0], &rowmans_32[0], &rowmans_33[0], &rowmans_34[0], &rowmans_35[0], &rowmans_36[0], &rowmans_37[0], &rowmans_38[0], &rowmans_39[0], &rowmans_40[0], &rowmans_41[0], &rowmans_42[0], &rowmans_43[0], &rowmans_44[0], &rowmans_45[0], &rowmans_46[0], &rowmans_47[0], &rowmans_48[0], &rowmans_49[0], &rowmans_50[0], &rowmans_51[0], &rowmans_52[0], &rowmans_53[0], &rowmans_54[0], &rowmans_55[0], &rowmans_56[0], &rowmans_57[0], &rowmans_58[0], &rowmans_59[0], &rowmans_60[0], &rowmans_61[0], &rowmans_62[0], &rowmans_63[0], &rowmans_64[0], &rowmans_65[0], &rowmans_66[0], &rowmans_67[0], &rowmans_68[0], &rowmans_69[0], &rowmans_70[0], &rowmans_71[0], &rowmans_72[0], &rowmans_73[0], &rowmans_74[0], &rowmans_75[0], &rowmans_76[0], &rowmans_77[0], &rowmans_78[0], &rowmans_79[0], &rowmans_80[0], &rowmans_81[0], &rowmans_82[0], &rowmans_83[0], &rowmans_84[0], &rowmans_85[0], &rowmans_86[0], &rowmans_87[0], &rowmans_88[0], &rowmans_89[0], &rowmans_90[0], &rowmans_91[0], &rowmans_92[0], &rowmans_93[0], &rowmans_94[0], &rowmans_95[0], &rowmans_96[0]};
 
-std::vector<std::array<float, 4>> renderText(const char* text) {
-    std::vector<std::array<float, 4>> r;
-    float curX = 0;
-    float f = 1.0 / (float)rowmans_height;
-    while (*text != 0) {
-        int glyphIx = *text - 32;
-        if (glyphIx < 0 || glyphIx >= rowmans_count)
-            glyphIx = '?' - 32;
-        ++text;
+// text as a list of lines
+class vectorText {
+   public:
+    // text bounding box
+    class bbox {
+       public:
+        // default constructor. Never overlaps.
+        bbox() : x0(std::numeric_limits<float>::infinity()),
+                 x1(-std::numeric_limits<float>::infinity()),
+                 y0(std::numeric_limits<float>::infinity()),
+                 y1(-std::numeric_limits<float>::infinity()) {}
 
-        const char* data = rowmans[glyphIx];
-        char nNums = rowmans_size[glyphIx];
-        float glyphWidth = rowmans_width[glyphIx];
-        for (int ix = 0; ix < nNums; ix += 4) {
-            float x1 = (float)data[ix + 0];
-            float y1 = (float)data[ix + 1];
-            float x2 = (float)data[ix + 2];
-            float y2 = (float)data[ix + 3];
-
-            x1 += curX;
-            x2 += curX;
-            if (glyphIx > 0) {  // don't render space (a dot)
-                std::array<float, 4> v{f * x1, f * y1, f * x2, f * y2};
-                r.push_back(v);
+        bbox(const std::vector<std::array<float, 4>>& geom) : bbox() {
+            for (auto v : geom) {
+                x0 = std::min(x0, v[0]);  // xMin
+                x0 = std::min(x0, v[2]);
+                y0 = std::min(y0, v[1]);  // yMin
+                y0 = std::min(y0, v[3]);
+                x1 = std::max(x1, v[0]);  // xMax
+                x1 = std::max(x1, v[2]);
+                y1 = std::max(y1, v[1]);  // yMax
+                y1 = std::max(y1, v[3]);
             }
         }
-        curX += glyphWidth;
+
+        void offset(float dx, float dy) {
+            x0 += dx;
+            x1 += dx;
+            y0 += dy;
+            y1 += dy;
+        }
+
+        void extend(float dx, float dy) {
+            x0 -= dx / 2;
+            x1 += dx / 2;
+            y0 -= dy / 2;
+            y1 += dy / 2;
+        }
+
+        float getX0() const { return x0; }
+        float getY0() const { return y0; }
+        float getX1() const { return x1; }
+        float getY1() const { return y1; }
+        float getWidth() const { return x1 - x0; }
+        float getHeight() const { return y1 - y0; }
+        bool overlaps(const bbox& arg) const {
+            if (arg.x1 < x0) return false;
+            if (arg.x0 >= x1) return false;
+            if (arg.y1 < y0) return false;
+            if (arg.y0 >= y1) return false;
+            return true;
+        }
+
+       protected:
+        float x0;
+        float x1;
+        float y0;
+        float y1;
+    };
+
+    vectorText(const char* text) {
+        float curX = 0;
+        float f = 1.0 / (float)rowmans_height;
+        while (*text != 0) {
+            int glyphIx = *text - 32;
+            if (glyphIx < 0 || glyphIx >= rowmans_count)
+                glyphIx = '?' - 32;  // print unknown glyphs as question mark
+            ++text;
+
+            const char* data = rowmans[glyphIx];
+            char nNums = rowmans_size[glyphIx];
+            float glyphWidth = rowmans_width[glyphIx];
+            for (int ix = 0; ix < nNums; ix += 4) {
+                float x1 = (float)data[ix + 0];
+                float y1 = (float)data[ix + 1];
+                float x2 = (float)data[ix + 2];
+                float y2 = (float)data[ix + 3];
+
+                x1 += curX;
+                x2 += curX;
+                if (glyphIx > 0) {  // don't render space (a dot)
+                    std::array<float, 4> v{f * x1, f * y1, f * x2, f * y2};
+                    geom.push_back(v);
+                }
+            }
+            curX += glyphWidth;
+        }
     }
-    return r;
-}
+    vectorText(const string& text) : vectorText(text.c_str()) {}
 
-std::vector<std::array<float, 4>> renderText(const string& text) {
-    return renderText(text.c_str());
-}
-
-// text bounding box
-class bbox {
-   public:
-    // default constructor. Never overlaps.
-    bbox() : x0(std::numeric_limits<float>::infinity()),
-             x1(-std::numeric_limits<float>::infinity()),
-             y0(std::numeric_limits<float>::infinity()),
-             y1(-std::numeric_limits<float>::infinity()) {}
-
-    bbox(const std::vector<std::array<float, 4>>& geom) : bbox() {
-        for (auto v : geom) {
-            x0 = std::min(x0, v[0]);  // xMin
-            x0 = std::min(x0, v[2]);
-            y0 = std::min(y0, v[1]);  // yMin
-            y0 = std::min(y0, v[3]);
-            x1 = std::max(x1, v[0]);  // xMax
-            x1 = std::max(x1, v[2]);
-            y1 = std::max(y1, v[1]);  // yMax
-            y1 = std::max(y1, v[3]);
+    void centerX() {
+        bbox b(geom);
+        float width = b.getWidth();
+        float offset = -width / 2;
+        for (size_t ix = 0; ix < geom.size(); ++ix) {
+            geom[ix][0] += offset;
+            geom[ix][2] += offset;
         }
     }
 
-    void offset(float dx, float dy) {
-        x0 += dx;
-        x1 += dx;
-        y0 += dy;
-        y1 += dy;
+    bbox getBbox() const {
+        return bbox(geom);
     }
 
-    void extend(float dx, float dy) {
-        x0 -= dx / 2;
-        x1 += dx / 2;
-        y0 -= dy / 2;
-        y1 += dy / 2;
+    void centerY() {
+        bbox b(geom);
+        float height = b.getHeight();
+        float offset = -height / 2;
+        for (size_t ix = 0; ix < geom.size(); ++ix) {
+            geom[ix][1] += offset;
+            geom[ix][3] += offset;
+        }
     }
 
-    float getX0() const { return x0; }
-    float getY0() const { return y0; }
-    float getX1() const { return x1; }
-    float getY1() const { return y1; }
-    float getWidth() const { return x1 - x0; }
-    float getHeight() const { return y1 - y0; }
-    bool overlaps(const bbox& arg) const {
-        if (arg.x1 < x0) return false;
-        if (arg.x0 >= x1) return false;
-        if (arg.y1 < y0) return false;
-        if (arg.y0 >= y1) return false;
-        return true;
+    void rotate270() {
+        for (size_t ix = 0; ix < geom.size(); ++ix) {
+            std::array<float, 4> e = geom[ix]; // copy
+            geom[ix][0] = -e[1];
+            geom[ix][1] = e[0];
+            geom[ix][2] = -e[3];
+            geom[ix][3] = e[2];
+        }
+    }
+
+    const std::vector<std::array<float, 4>>& getGeom() const {
+        return geom;
+    }
+
+    /** scales by fontsize and moves to x0/y0 */
+    vectorText project(float fontsize, float x0, float y0) const {
+        std::vector<std::array<float, 4>> r;
+        for (auto v : geom)
+            r.push_back({fontsize * v[0] + x0, fontsize * v[1] + y0, fontsize * v[2] + x0, fontsize * v[3] + y0});
+        return r;
     }
 
    protected:
-    float x0;
-    float x1;
-    float y0;
-    float y1;
+    std::vector<std::array<float, 4>> geom;
+    vectorText(std::vector<std::array<float, 4>> geom) : geom(geom) {}
 };
-
-std::vector<std::array<float, 4>> centerX(const std::vector<std::array<float, 4>>& geom) {
-    bbox b(geom);
-    std::vector<std::array<float, 4>> r;
-    float width = b.getWidth();
-    float offset = -width / 2;
-    for (std::array<float, 4> a : geom) {  // copies
-        a[0] += offset;
-        a[2] += offset;
-        r.push_back(a);
-    }
-    return r;
-}
-
-std::vector<std::array<float, 4>> centerY(const std::vector<std::array<float, 4>>& geom) {
-    bbox b(geom);
-    std::vector<std::array<float, 4>> r;
-    float height = b.getHeight();
-    float offset = -height / 2;
-    for (std::array<float, 4> a : geom) {  // copies
-        a[1] += offset;
-        a[3] += offset;
-        r.push_back(a);
-    }
-    return r;
-}
-
-void rotate270(std::vector<std::array<float, 4>>& geom) {
-    for (size_t ix = 0; ix < geom.size(); ++ix) {
-        auto e = geom[ix];
-        geom[ix][0] = -e[1];
-        geom[ix][1] = e[0];
-        geom[ix][2] = -e[3];
-        geom[ix][3] = e[2];
-    }
-}
-
-/** scales by fontsize and moves to x0/y0 */
-static std::vector<std::array<float, 4>> project(std::vector<std::array<float, 4>> textVec, float fontsize, float x0, float y0) {
-    std::vector<std::array<float, 4>> r;
-    for (auto v : textVec)
-        r.push_back({fontsize * v[0] + x0, fontsize * v[1] + y0, fontsize * v[2] + x0, fontsize * v[3] + y0});
-    return r;
-}
 
 }  // namespace vectorFont
 }  // namespace aCCb

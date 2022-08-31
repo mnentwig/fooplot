@@ -1,8 +1,15 @@
 #pragma once
+#include <cmath>  // HUGE_VALF
 #include <filesystem>
+#include <fstream>
+#include <map>
+#include <stdexcept>
 #include <string>
 
-using std::string, std::vector;
+#include "../aCCb/cmdLineParsing.hpp"
+#include "../aCCb/stringUtil.hpp"
+
+using std::string, std::vector, std::map;
 
 // loads data files, converts format and keeps them in memory, providing const pointers via filename.
 class traceDataMan_cl {
@@ -208,7 +215,7 @@ class traceDataMan_cl {
             return;
 
         std::ifstream is(filename);
-        if (!is.is_open()) throw runtime_error("failed to open file (r): '" + filename + "')");
+        if (!is.is_open()) throw std::runtime_error("failed to open file (r): '" + filename + "')");
 
         vector<string> &r = asciiDataByFilename[filename];  // creates new, empty vector
         string line;
@@ -245,7 +252,7 @@ class traceDataMan_cl {
 
         std::ifstream is(filename, std::ifstream::binary);
         if (!is)
-            throw runtime_error("failed to open file: " + filename);
+            throw std::runtime_error("failed to open file: " + filename);
 
         string line;
         while (std::getline(is, line)) {

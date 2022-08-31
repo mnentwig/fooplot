@@ -77,8 +77,8 @@ class aCCbWidget : public Fl_Box {
     };
 
     /** renders vector text (this can be used from any widget's draw() function) */
-    static void renderText(std::vector<std::array<float, 4>> textVec) {
-        for (auto v : textVec) {
+    static void renderText(const aCCb::vectorFont::vectorText& t) {
+        for (auto v : t.getGeom()) {
             fl_begin_line();
             fl_vertex(std::floor(v[0] + 0.5), std::floor(v[1] + 0.5));
             fl_vertex(std::floor(v[2] + 0.5), std::floor(v[3] + 0.5));
@@ -87,8 +87,8 @@ class aCCbWidget : public Fl_Box {
     }
 
     /** renders vector text (this can be used from any widget's draw() function) */
-    static void renderText(std::vector<std::array<float, 4>> textVec, float fontsize, float x0, float y0) {
-        for (auto v : textVec) {
+    static void renderText(const aCCb::vectorFont::vectorText& t, float fontsize, float x0, float y0) {
+        for (auto v : t.getGeom()) {
             fl_begin_line();
             fl_vertex(std::floor(fontsize * v[0] + x0 + 0.5), std::floor(fontsize * v[1] + y0 + 0.5));
             fl_vertex(std::floor(fontsize * v[2] + x0 + 0.5), std::floor(fontsize * v[3] + y0 + 0.5));

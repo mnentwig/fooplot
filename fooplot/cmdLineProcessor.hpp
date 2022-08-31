@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <limits>
+#include <algorithm> // std::find
 
 #include "../aCCb/cmdLineParsing.hpp"
 #include "../aCCb/stringToNum.hpp"
