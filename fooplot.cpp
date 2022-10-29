@@ -58,9 +58,11 @@ class myMenu : public aCCbWidget {
     Fl_Float_Input *fi;
 };
 #endif
-class myTestWin {
+
+// fooplot window started using data structure from parsing cmd line args
+class fooplotWindow {
    public:
-    myTestWin(fooplotCmdLineArgRoot &l, allDrawJobs_cl &adr) : syncfile(l.syncfile), persistfile(l.persistfile) {
+    fooplotWindow(fooplotCmdLineArgRoot &l, allDrawJobs_cl &adr) : syncfile(l.syncfile), persistfile(l.persistfile) {
         // === main window ===
         int areaW, areaH;
         if ((l.windowX > 0) && (l.windowY > 0) && (l.windowW > 0) && (l.windowH > 0)) {
@@ -139,7 +141,7 @@ class myTestWin {
     }
 
     static void cb_closeWrapper(Fl_Widget *w, void *userdata) {
-        myTestWin *this_ = (myTestWin *)userdata;
+        fooplotWindow *this_ = (fooplotWindow *)userdata;
         this_->cb_close();
     }
 
@@ -166,10 +168,10 @@ class myTestWin {
 
     static void cb_timerWrapper(void *userdata) {
         assert(userdata);
-        ((myTestWin *)userdata)->cb_timer();
+        ((fooplotWindow *)userdata)->cb_timer();
     }
 
-    ~myTestWin() {
+    ~fooplotWindow() {
         delete this->window;  // deletes children recursively
     }
     aCCb::plot2d *tb;
@@ -230,7 +232,7 @@ class ww : public Fl_Double_Window {
 };
 #endif
 
-static myTestWin *windowForSigIntHandler;
+static fooplotWindow *windowForSigIntHandler;
 int main2(int argc, const char **argv) {
 #if 0
     ww *window = new ww(111, 112);
@@ -350,7 +352,7 @@ int main2(int argc, const char **argv) {
 
     // === start up window ===
     // background thread running
-    myTestWin w(l, allDrawJobs);
+    fooplotWindow w(l, allDrawJobs);
     windowForSigIntHandler = &w;
     w.show();
 
