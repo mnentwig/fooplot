@@ -73,6 +73,17 @@ class markerMan_cl {
             markers[key] = new marker_cl(sequence, rgba);
 
             sequence =
+                "   X   "
+                "   X   "
+                "   X   "
+                "XXXXXXX"
+                "   X   "
+                "   X   "
+                "   X   ";
+            key = colCode + plus + "3";
+            markers[key] = new marker_cl(sequence, rgba);
+
+            sequence =
                 "X X"
                 " X "
                 "X X";
@@ -87,6 +98,17 @@ class markerMan_cl {
                 " X X "
                 "X   X";
             key = colCode + cross + "2";
+            markers[key] = new marker_cl(sequence, rgba);
+
+            sequence =
+                "X     X"
+                " X   X "
+                "  X X  "
+                "   X   "
+                "  X X  "
+                " X   X "
+                "X     X";
+            key = colCode + cross + "3";
             markers[key] = new marker_cl(sequence, rgba);
 
         }  // for colors
