@@ -216,6 +216,9 @@ void usage() {
     cerr << "-title (text)" << endl;
     cerr << "-sync (filename)" << endl;
     cerr << "-persist (filename)" << endl;
+    cerr << "-fontsize (number)" << endl;
+    cerr << "-windowX (number) -windowY (number) -windowW (number) -windowH(number)" << endl;
+    cerr << "-xLimLow (number) -xLimHigh (number) -yLimLow (number) -yLimHigh (number)" << endl;
     cerr << endl;
     cerr << "[1] colors in place of 'w': krgbcmyaow" << endl;
     cerr << "    shapes in place of '.1': .1 .2 .3 +1 +2 x1 x2 ('1' can be omitted')" << endl;
@@ -337,9 +340,14 @@ int main2(int argc, const char **argv) {
         }
 
         //* one trace */
+        const std::vector<float> *dataX = traceDataMan.getFloatVec(t.dataX);
+        const std::vector<float> *dataY = traceDataMan.getFloatVec(t.dataY);
+        if (dataX && !dataY)
+            throw aCCb::argObjException("-dataX without -dataY");
+
         drawJob j(
-            traceDataMan.getFloatVec(t.dataX),
-            traceDataMan.getFloatVec(t.dataY),
+            dataX,
+            dataY,
             annotations,
             marker,
             t.vertLineX,
@@ -367,7 +375,7 @@ int main2(int argc, const char **argv) {
 
 // Ctrl-C callback
 void sigIntHandler(int /*signal*/) {
-    // TODO 
+    // TODO
     // "The safe and portable approach is never to call show() or hide() on any widget from the context of a worker thread. Instead you can use the Fl_Awake_Handler variant of Fl::awake() to request the main() thread to create, destroy, show or hide the widget on behalf of the worker thread"
     std::cout << "sig INT detected, shutting down" << endl;
     if (windowForSigIntHandler)
